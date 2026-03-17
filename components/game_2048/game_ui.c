@@ -1,26 +1,31 @@
 #include "game_ui.h"
 #include "game_logic.h"
 #include "game_gesture.h"
-#include "lv_port.h"
-#include "nvs_flash.h"
-#include "nvs.h"
-#include "esp_log.h"
 
 #include <stdio.h>
 #include <string.h>
 
+#ifndef DESKTOP_BUILD
+#include "lv_port.h"
+#include "nvs_flash.h"
+#include "nvs.h"
+#include "esp_log.h"
+#else
+#define ESP_LOGI(tag, fmt, ...) printf("[%s] " fmt "\n", tag, ##__VA_ARGS__)
+#endif
+
 static const char *TAG = "game_ui";
 
-/* ── Layout constants (480x320 landscape) ── */
-#define SCREEN_W        480
-#define SCREEN_H        320
-#define BOARD_SIZE      270
-#define CELL_SIZE       60
+/* ── Layout constants (320x480 portrait) ── */
+#define SCREEN_W        320
+#define SCREEN_H        480
+#define BOARD_SIZE      302   /* 4×68 + 5×6 = 302 */
+#define CELL_SIZE       68
 #define CELL_GAP        6
 #define BOARD_PAD       (CELL_GAP)
-#define TOP_BAR_H       40
+#define TOP_BAR_H       80
 #define BOARD_X         ((SCREEN_W - BOARD_SIZE) / 2)
-#define BOARD_Y         (TOP_BAR_H + (SCREEN_H - TOP_BAR_H - BOARD_SIZE) / 2)
+#define BOARD_Y         (TOP_BAR_H + 10)
 
 /* ── Classic 2048 color palette ── */
 typedef struct {
@@ -73,7 +78,8 @@ static lv_obj_t *best_value_label;
 static lv_obj_t *board_obj;
 static lv_obj_t *overlay_obj = NULL;
 
-/* ── NVS persistence ── */
+/* ── NVS persistence (ESP32 only) ── */
+#ifndef DESKTOP_BUILD
 static void load_best_score(void)
 {
     nvs_handle_t handle;
@@ -95,6 +101,10 @@ static void save_best_score(void)
         nvs_close(handle);
     }
 }
+#else
+static void load_best_score(void) { /* no-op on desktop */ }
+static void save_best_score(void) { /* no-op on desktop */ }
+#endif
 
 /* ── Forward declarations ── */
 static void new_game_cb(lv_event_t *e);
@@ -104,7 +114,7 @@ static void show_overlay(const char *message, bool show_keep_playing);
 /* ── Animations ── */
 static void zoom_anim_cb(void *obj, int32_t v)
 {
-    lv_img_set_zoom((lv_obj_t *)obj, (uint16_t)v);
+    lv_obj_set_style_transform_zoom((lv_obj_t *)obj, v, 0);
 }
 
 static void pop_in_anim(lv_obj_t *obj)
@@ -120,7 +130,7 @@ static void pop_in_anim(lv_obj_t *obj)
 
 static void merge_pulse_restore(lv_anim_t *a)
 {
-    lv_img_set_zoom((lv_obj_t *)a->var, 256);
+    lv_obj_set_style_transform_zoom((lv_obj_t *)a->var, 256, 0);
 }
 
 static void merge_pulse_anim(lv_obj_t *obj)
@@ -292,7 +302,7 @@ static void new_game_cb(lv_event_t *e)
 static lv_obj_t *create_score_box(lv_obj_t *parent, const char *title, lv_obj_t **value_label)
 {
     lv_obj_t *box = lv_obj_create(parent);
-    lv_obj_set_size(box, 70, TOP_BAR_H - 4);
+    lv_obj_set_size(box, 70, 32);  /* Default size; caller may override */
     lv_obj_set_style_bg_color(box, color_hex(0xbbada0), 0);
     lv_obj_set_style_radius(box, 4, 0);
     lv_obj_set_style_border_width(box, 0, 0);
@@ -317,12 +327,14 @@ static lv_obj_t *create_score_box(lv_obj_t *parent, const char *title, lv_obj_t 
 /* ── Main UI init ── */
 void game_ui_init(lv_indev_t *touch_indev)
 {
+#ifndef DESKTOP_BUILD
     /* Initialize NVS for best score persistence */
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         nvs_flash_erase();
         nvs_flash_init();
     }
+#endif
 
     /* Initialize game state */
     game_init(&game);
@@ -334,25 +346,30 @@ void game_ui_init(lv_indev_t *touch_indev)
     lv_obj_set_style_bg_color(scr, color_hex(0xfaf8ef), 0);
     lv_obj_clear_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
 
-    /* ── Top bar ── */
-    /* Title */
+    /* ── Top bar (portrait: title row + score/button row) ── */
+    /* Row 1: Title */
     lv_obj_t *title = lv_label_create(scr);
     lv_label_set_text(title, "2048");
     lv_obj_set_style_text_font(title, &lv_font_montserrat_30, 0);
     lv_obj_set_style_text_color(title, color_hex(0x776e65), 0);
-    lv_obj_set_pos(title, 10, 4);
+    lv_obj_set_pos(title, 10, 6);
 
-    /* Score boxes */
+    /* Row 2: Score boxes + New Game button */
+    int row2_y = 42;
+    int score_box_h = 32;
+
     lv_obj_t *score_box = create_score_box(scr, "SCORE", &score_value_label);
-    lv_obj_set_pos(score_box, SCREEN_W - 240, 2);
+    lv_obj_set_size(score_box, 70, score_box_h);
+    lv_obj_set_pos(score_box, 10, row2_y);
 
     lv_obj_t *best_box = create_score_box(scr, "BEST", &best_value_label);
-    lv_obj_set_pos(best_box, SCREEN_W - 164, 2);
+    lv_obj_set_size(best_box, 70, score_box_h);
+    lv_obj_set_pos(best_box, 86, row2_y);
 
     /* New Game button */
     lv_obj_t *new_btn = lv_btn_create(scr);
-    lv_obj_set_size(new_btn, 80, 28);
-    lv_obj_set_pos(new_btn, SCREEN_W - 80 - 6, 8);
+    lv_obj_set_size(new_btn, 90, score_box_h);
+    lv_obj_set_pos(new_btn, SCREEN_W - 90 - 10, row2_y);
     lv_obj_set_style_bg_color(new_btn, color_hex(0x8f7a66), 0);
     lv_obj_set_style_radius(new_btn, 4, 0);
 

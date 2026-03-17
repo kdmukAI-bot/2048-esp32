@@ -1,4 +1,4 @@
-.PHONY: docker-shell docker-build docker-flash clean
+.PHONY: docker-shell docker-build docker-flash clean desktop-build desktop-run desktop-clean
 
 # Local dev uses the same prebaked GHCR image as CI.
 # Override IMAGE if you need a pinned tag.
@@ -36,3 +36,14 @@ clean:
 # Deeper clean: clean + purge Docker cache volume
 clean-purge-cache: clean
 	docker volume rm $(CACHE_VOL) 2>/dev/null || true
+
+# ── Desktop simulator (SDL2 + system LVGL) ──
+desktop-build:
+	cmake -S desktop -B desktop/build
+	cmake --build desktop/build
+
+desktop-run: desktop-build
+	desktop/build/game_2048_desktop
+
+desktop-clean:
+	rm -rf desktop/build

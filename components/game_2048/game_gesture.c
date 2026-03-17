@@ -1,6 +1,12 @@
 #include "game_gesture.h"
 #include "game_ui.h"
+
+#ifndef DESKTOP_BUILD
 #include "esp_log.h"
+#else
+#include <stdio.h>
+#define ESP_LOGD(tag, fmt, ...) /* no-op on desktop */
+#endif
 
 static const char *TAG = "game_gesture";
 

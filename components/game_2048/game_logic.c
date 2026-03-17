@@ -2,13 +2,24 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+
+#ifndef DESKTOP_BUILD
 #include "esp_random.h"
+#endif
 
 static bool seeded = false;
 
 static int random_int(int max)
 {
+#ifdef DESKTOP_BUILD
+    if (!seeded) {
+        srand((unsigned)time(NULL));
+        seeded = true;
+    }
+    return rand() % max;
+#else
     return (int)(esp_random() % (uint32_t)max);
+#endif
 }
 
 void game_init(game_t *game)
