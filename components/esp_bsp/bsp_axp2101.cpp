@@ -69,7 +69,7 @@ static int pmu_register_write_byte(uint8_t devAddr, uint8_t regAddr, uint8_t *da
     return ret == ESP_OK ? 0 : -1;
 }
 
-esp_err_t bsp_axp2101_init(i2c_master_bus_handle_t bus_handle)
+extern "C" esp_err_t bsp_axp2101_init(i2c_master_bus_handle_t bus_handle)
 {
     i2c_init(bus_handle);
     //* Implemented using read and write callback methods, applicable to other platforms
@@ -351,7 +351,7 @@ esp_err_t bsp_axp2101_init(i2c_master_bus_handle_t bus_handle)
     return ESP_OK;
 }
 
-esp_err_t esp_axp2101_port_init1(i2c_master_bus_handle_t bus_handle)
+extern "C" esp_err_t esp_axp2101_port_init1(i2c_master_bus_handle_t bus_handle)
 {
     i2c_init(bus_handle);
     //* Implemented using read and write callback methods, applicable to other platforms
@@ -495,7 +495,7 @@ esp_err_t esp_axp2101_port_init1(i2c_master_bus_handle_t bus_handle)
     return ESP_OK;
 }
 
-void pmu_isr_handler(void)
+extern "C" void pmu_isr_handler(void)
 {
     // Get PMU Interrupt Status Register
     power.getIrqStatus();

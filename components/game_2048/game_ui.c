@@ -102,6 +102,11 @@ static void remove_overlay(void);
 static void show_overlay(const char *message, bool show_keep_playing);
 
 /* ── Animations ── */
+static void zoom_anim_cb(void *obj, int32_t v)
+{
+    lv_img_set_zoom((lv_obj_t *)obj, (uint16_t)v);
+}
+
 static void pop_in_anim(lv_obj_t *obj)
 {
     lv_anim_t a;
@@ -109,13 +114,8 @@ static void pop_in_anim(lv_obj_t *obj)
     lv_anim_set_var(&a, obj);
     lv_anim_set_values(&a, 0, 256);
     lv_anim_set_time(&a, 100);
-    lv_anim_set_exec_cb(&a, (lv_anim_exec_xcb_t)lv_img_set_zoom);
+    lv_anim_set_exec_cb(&a, zoom_anim_cb);
     lv_anim_start(&a);
-}
-
-static void merge_pulse_step1(void *obj, int32_t v)
-{
-    lv_img_set_zoom((lv_obj_t *)obj, (uint16_t)v);
 }
 
 static void merge_pulse_restore(lv_anim_t *a)
@@ -131,7 +131,7 @@ static void merge_pulse_anim(lv_obj_t *obj)
     lv_anim_set_values(&a, 256, 282);  /* 110% = 256*1.1 ≈ 282 */
     lv_anim_set_time(&a, 75);
     lv_anim_set_playback_time(&a, 75);
-    lv_anim_set_exec_cb(&a, merge_pulse_step1);
+    lv_anim_set_exec_cb(&a, zoom_anim_cb);
     lv_anim_set_ready_cb(&a, merge_pulse_restore);
     lv_anim_start(&a);
 }
@@ -302,7 +302,7 @@ static lv_obj_t *create_score_box(lv_obj_t *parent, const char *title, lv_obj_t 
     lv_obj_t *title_lbl = lv_label_create(box);
     lv_label_set_text(title_lbl, title);
     lv_obj_set_style_text_color(title_lbl, color_hex(0xeee4da), 0);
-    lv_obj_set_style_text_font(title_lbl, &lv_font_montserrat_10, 0);
+    lv_obj_set_style_text_font(title_lbl, &lv_font_montserrat_14, 0);
     lv_obj_align(title_lbl, LV_ALIGN_TOP_MID, 0, 0);
 
     *value_label = lv_label_create(box);
@@ -359,7 +359,7 @@ void game_ui_init(lv_indev_t *touch_indev)
     lv_obj_t *new_lbl = lv_label_create(new_btn);
     lv_label_set_text(new_lbl, "New Game");
     lv_obj_set_style_text_color(new_lbl, color_hex(0xf9f6f2), 0);
-    lv_obj_set_style_text_font(new_lbl, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(new_lbl, &lv_font_montserrat_14, 0);
     lv_obj_center(new_lbl);
     lv_obj_add_event_cb(new_btn, new_game_cb, LV_EVENT_CLICKED, NULL);
 

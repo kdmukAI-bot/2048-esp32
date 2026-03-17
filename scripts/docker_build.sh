@@ -4,10 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-# Ensure writable HOME/cache for non-root container users.
-export HOME="/tmp/home"
-export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
-mkdir -p "$HOME" "$XDG_CACHE_HOME"
+# Container runs as root; cache volume is mounted at /root/.cache.
+export HOME="/root"
 
 # Avoid git ownership issues with host-mounted workspace and prebaked IDF checkout.
 git config --global --add safe.directory '*' || true

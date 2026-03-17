@@ -42,11 +42,19 @@ jobs:
           source "$IDF_PATH/export.sh"
           idf.py --version
 
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: /root/.cache/ccache
+          key: ccache-esp32s3-${{ hashFiles('main/**', 'components/**') }}
+          restore-keys: |
+            ccache-esp32s3-
+
       - name: Build firmware
         run: |
           source "$IDF_PATH/export.sh"
           idf.py set-target esp32s3
-          idf.py build 2>&1 | tee build-log.txt
+          idf.py build --ccache 2>&1 | tee build-log.txt
 
       - name: Record build provenance
         run: |

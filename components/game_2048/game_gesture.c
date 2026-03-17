@@ -32,8 +32,4 @@ void game_gesture_init(lv_obj_t *board, lv_indev_t *touch_indev)
     /* Make the board capture gestures from the full screen for better UX */
     lv_obj_t *scr = lv_scr_act();
     lv_obj_add_event_cb(scr, gesture_event_cb, LV_EVENT_GESTURE, NULL);
-
-    /* Lower gesture threshold for responsive swipes (default is 10) */
-    lv_indev_set_gesture_limit(touch_indev, 20);
-    lv_indev_set_scroll_limit(touch_indev, 5);
 }

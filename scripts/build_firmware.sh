@@ -11,7 +11,7 @@ echo "=== Setting target: $BOARD ==="
 idf.py set-target "$BOARD"
 
 echo "=== Building firmware ==="
-idf.py build 2>&1 | tee "${ROOT_DIR}/build-log.txt"
+idf.py build --ccache 2>&1 | tee "${ROOT_DIR}/build-log.txt"
 
 echo "=== Build complete ==="
 echo "Firmware: $BUILD_DIR/game_2048.bin"
