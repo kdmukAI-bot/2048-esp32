@@ -54,7 +54,7 @@ jobs:
         run: |
           source "$IDF_PATH/export.sh"
           idf.py set-target esp32s3
-          idf.py build --ccache 2>&1 | tee build-log.txt
+          idf.py build -DCCACHE_ENABLE=1 2>&1 | tee build-log.txt
 
       - name: Record build provenance
         run: |
