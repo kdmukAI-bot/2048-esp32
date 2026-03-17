@@ -22,7 +22,7 @@ static const char *TAG = "2048";
 #define LCD_H_RES 320
 #define LCD_V_RES 480
 #define LCD_BUFFER_SIZE (LCD_H_RES * LCD_V_RES)
-#define DISPLAY_ROTATION LV_DISP_ROT_90
+#define DISPLAY_ROTATION LV_DISP_ROT_NONE
 
 static esp_io_expander_handle_t expander_handle = NULL;
 static esp_lcd_panel_io_handle_t io_handle = NULL;
@@ -62,7 +62,7 @@ static void lvgl_port_setup(void)
 {
     lvgl_port_cfg_t port_cfg = {
         .task_priority = 4,
-        .task_stack = 1024 * 5,
+        .task_stack = 1024 * 8,
         .task_affinity = 1,
         .task_max_sleep_ms = 500,
         .timer_period_ms = 5,
@@ -73,9 +73,9 @@ static void lvgl_port_setup(void)
         .io_handle = io_handle,
         .panel_handle = panel_handle,
         .buffer_size = LCD_BUFFER_SIZE,
-        .trans_size = LCD_BUFFER_SIZE / 4,
-        .hres = LCD_V_RES,  /* Swapped for 90° rotation: 480 */
-        .vres = LCD_H_RES,  /* 320 */
+        .trans_size = LCD_BUFFER_SIZE / 10,
+        .hres = LCD_H_RES,  /* 320 — native portrait */
+        .vres = LCD_V_RES,  /* 480 */
         .sw_rotate = DISPLAY_ROTATION,
         .draw_wait_cb = NULL,
         .flags = {
@@ -108,8 +108,8 @@ void app_main(void)
     /* Step 4: Display */
     bsp_display_init(&io_handle, &panel_handle, LCD_BUFFER_SIZE);
 
-    /* Step 5: Touch (swapped res for 90° rotation) */
-    bsp_touch_init(i2c_bus, LCD_V_RES, LCD_H_RES, DISPLAY_ROTATION);
+    /* Step 5: Touch (native portrait coordinates) */
+    bsp_touch_init(i2c_bus, LCD_H_RES, LCD_V_RES, DISPLAY_ROTATION);
 
     /* Step 6: Backlight */
     bsp_display_brightness_init();

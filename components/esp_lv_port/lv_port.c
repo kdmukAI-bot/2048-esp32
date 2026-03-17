@@ -18,6 +18,7 @@
 
 #include "lv_port.h"
 #include "lvgl.h"
+#include <string.h>
 
 #ifdef ESP_LVGL_PORT_TOUCH_COMPONENT
 #include "esp_lcd_touch.h"
@@ -238,7 +239,7 @@ lv_disp_t *lvgl_port_add_disp(const lvgl_port_display_cfg_t *disp_cfg)
 
     disp_ctx->disp_drv.draw_buf = disp_buf;
     disp_ctx->disp_drv.user_data = disp_ctx;
-    /* Force full_fresh */
+    /* Full refresh required — AXS15231B ignores RASET over QSPI (see docs/axs15231b-raset-bug.md) */
     disp_ctx->disp_drv.full_refresh = 1;
 
 #if LVGL_PORT_HANDLE_FLUSH_READY
@@ -531,11 +532,7 @@ static void lvgl_port_flush_callback(lv_disp_drv_t *drv, const lv_area_t *area, 
                 y_draw_end = drv->ver_res - y_start_tmp - 1;
                 break;
             case LV_DISP_ROT_NONE:
-                for (int y = 0; y < trans_height; y++) {
-                    for (int x = 0; x < width; x++) {
-                        *(to + y * (width) + x) = *(from + y_start_tmp * width + y * (width) + x);
-                    }
-                }
+                memcpy(to, from + (y_start_tmp * width), trans_height * width * sizeof(lv_color_t));
                 x_draw_start = x_start;
                 x_draw_end = x_end;
                 y_draw_start = y_start_tmp;
@@ -559,7 +556,7 @@ static void lvgl_port_flush_callback(lv_disp_drv_t *drv, const lv_area_t *area, 
                 x_start_tmp += max_width;
             } else if (LV_DISP_ROT_270 == rotate) {
                 x_end_tmp -= max_width;
-            } if (LV_DISP_ROT_NONE == rotate) {
+            } else if (LV_DISP_ROT_NONE == rotate) {
                 y_start_tmp += max_height;
             } else {
                 y_end_tmp -= max_height;

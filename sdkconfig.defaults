@@ -23,7 +23,14 @@ CONFIG_LV_FONT_MONTSERRAT_24=y
 CONFIG_LV_FONT_MONTSERRAT_28=y
 CONFIG_LV_FONT_MONTSERRAT_30=y
 
+# LVGL memory — use system heap instead of LVGL's tiny 32KB internal pool
+CONFIG_LV_MEM_CUSTOM=y
+
+# LVGL perf monitor (shows FPS + CPU%)
+CONFIG_LV_USE_PERF_MONITOR=y
+
 # LVGL misc
+CONFIG_LV_FONT_MONTSERRAT_14=y
 CONFIG_LV_TXT_ENC_UTF8=y
 CONFIG_LV_COLOR_16_SWAP=y
 
@@ -31,6 +38,9 @@ CONFIG_LV_COLOR_16_SWAP=y
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 CONFIG_PARTITION_TABLE_FILENAME="partitions.csv"
+
+# Task watchdog — 10s timeout (default 5s can trip during display flush)
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=10
 
 # Disable error string lookup to save flash
 CONFIG_ESP_ERR_TO_NAME_LOOKUP=n
