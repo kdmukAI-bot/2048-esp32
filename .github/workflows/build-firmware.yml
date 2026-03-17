@@ -1,0 +1,77 @@
+name: Build 2048 Firmware
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  resolve-image-owner:
+    runs-on: ubuntu-24.04
+    outputs:
+      owner_lc: ${{ steps.owner.outputs.owner_lc }}
+    steps:
+      - name: Lowercase GHCR owner
+        id: owner
+        run: echo "owner_lc=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: resolve-image-owner
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    env:
+      IDF_PATH: /opt/toolchains/esp-idf
+      IDF_TOOLS_PATH: /opt/espressif
+    container:
+      image: ghcr.io/${{ needs.resolve-image-owner.outputs.owner_lc }}/2048-esp32-base:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure baked ESP-IDF tools environment
+        run: |
+          test -d /opt/toolchains/esp-idf
+          mkdir -p "$IDF_TOOLS_PATH"
+          source "$IDF_PATH/export.sh"
+          idf.py --version
+
+      - name: Build firmware
+        run: |
+          source "$IDF_PATH/export.sh"
+          idf.py set-target esp32s3
+          idf.py build 2>&1 | tee build-log.txt
+
+      - name: Record build provenance
+        run: |
+          {
+            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "git_ref=${{ github.ref }}"
+            echo "git_sha=${{ github.sha }}"
+            echo "idf_head=$(git -C "$IDF_PATH" rev-parse HEAD)"
+            echo "idf_version=$(source "$IDF_PATH/export.sh" >/dev/null 2>&1; idf.py --version 2>/dev/null || true)"
+            echo "cmake=$(cmake --version | head -n1)"
+          } | tee build/provenance.txt
+
+      - name: Collect firmware artifacts
+        run: |
+          mkdir -p out/bootloader out/partition_table
+          cp build/game_2048.bin out/ 2>/dev/null || cp build/*.bin out/ 2>/dev/null || true
+          cp build/game_2048.elf out/ 2>/dev/null || cp build/*.elf out/ 2>/dev/null || true
+          cp build/flash_args out/ 2>/dev/null || true
+          cp build/bootloader/bootloader.bin out/bootloader/ 2>/dev/null || true
+          cp build/partition_table/partition-table.bin out/partition_table/ 2>/dev/null || true
+          cp build/provenance.txt out/ 2>/dev/null || true
+          cp build-log.txt out/ 2>/dev/null || true
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-2048-esp32s3
+          path: out/

@@ -24,15 +24,34 @@ components/
 ### BSP Drivers
 The `esp_bsp`, `esp_lv_port`, and `XPowersLib` components are copied from `seedsigner-c-modules`. Stripped of camera, audio, SD card, IMU, RTC, and WiFi dependencies.
 
-### Build Commands
+### Build System
+Docker-based builds using a pre-built GHCR base image (`Dockerfile.ghcr`) with ESP-IDF v5.5.1 baked in. The local Docker flow and CI workflow use the same image.
+
+```bash
+make docker-build    # One-shot firmware build
+make docker-shell    # Interactive shell in build container
+make docker-flash    # Flash via USB (needs --device access)
+```
+
+Native build (requires ESP-IDF on host):
 ```bash
 idf.py set-target esp32s3
 idf.py build
 idf.py -p /dev/ttyACM0 flash monitor
 ```
 
+### Build Scripts
+- `scripts/setup_env.sh` — Sources ESP-IDF from prebaked image path
+- `scripts/build_firmware.sh` — Runs `idf.py set-target` + `idf.py build`
+- `scripts/docker_build.sh` — Container entry point: sets up HOME/cache, calls setup + build
+- `scripts/docker_flash.sh` — Container entry point for flashing via serial
+
+### CI/CD
+- `build-base-image.yml` — Builds/pushes GHCR base image (ESP-IDF only, triggered by Dockerfile changes)
+- `build-firmware.yml` — Builds firmware on push/PR using GHCR base image, uploads artifacts
+
 ### Dependencies
-- ESP-IDF v5.x (tested with v5.5.1)
+- ESP-IDF v5.5.1 (prebaked in GHCR base image)
 - LVGL v8 (via ESP Component Registry: lvgl/lvgl ^8)
 - esp_lcd_axs15231b driver (via ESP Component Registry)
 - esp_io_expander_tca9554 (via ESP Component Registry)

@@ -20,13 +20,36 @@ A touchscreen implementation of the classic [2048 game](https://github.com/gabri
 
 ## Build
 
-Requires [ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/get-started/) v5.x.
+### Docker (recommended)
+
+No host toolchain installation required. Uses a pre-built GHCR base image with ESP-IDF v5.5.1 baked in.
+
+```bash
+# Interactive shell inside the build container
+make docker-shell
+
+# One-shot build
+make docker-build
+
+# Flash (requires USB device access)
+make docker-flash
+```
+
+The base image is built from `Dockerfile.ghcr` and published to GHCR by the `build-base-image.yml` CI workflow. Local builds pull it automatically.
+
+### Native
+
+Requires [ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/get-started/) v5.x installed on the host.
 
 ```bash
 idf.py set-target esp32s3
 idf.py build
 idf.py -p /dev/ttyACM0 flash monitor
 ```
+
+### CI
+
+GitHub Actions builds firmware on every push/PR using the same GHCR base image. Firmware artifacts are uploaded for download.
 
 ## Project Structure
 
