@@ -83,3 +83,72 @@ jobs:
         with:
           name: firmware-2048-esp32s3
           path: out/
+
+  desktop-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsdl2-dev lv2-dev cmake pkg-config
+
+      - name: Install LVGL from source
+        run: |
+          git clone --depth 1 --branch release/v8.3 https://github.com/lvgl/lvgl.git /tmp/lvgl
+          cd /tmp/lvgl
+          # Use our lv_conf.h
+          cp ${{ github.workspace }}/desktop/lv_conf.h .
+          mkdir build && cd build
+          cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local \
+                   -DLV_CONF_PATH=/tmp/lvgl/lv_conf.h \
+                   -DBUILD_SHARED_LIBS=ON
+          make -j$(nproc)
+          sudo make install
+          sudo ldconfig
+
+      - name: Build desktop simulator
+        run: |
+          cmake -S desktop -B desktop/build
+          cmake --build desktop/build
+
+      - name: Upload desktop binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-linux
+          path: desktop/build/game_2048_desktop
+
+  desktop-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install sdl2 pkg-config cmake
+
+      - name: Install LVGL from source
+        run: |
+          git clone --depth 1 --branch release/v8.3 https://github.com/lvgl/lvgl.git /tmp/lvgl
+          cd /tmp/lvgl
+          cp ${{ github.workspace }}/desktop/lv_conf.h .
+          mkdir build && cd build
+          cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local \
+                   -DLV_CONF_PATH=/tmp/lvgl/lv_conf.h \
+                   -DBUILD_SHARED_LIBS=ON
+          make -j$(sysctl -n hw.ncpu)
+          sudo make install
+
+      - name: Build desktop simulator
+        run: |
+          cmake -S desktop -B desktop/build
+          cmake --build desktop/build
+
+      - name: Upload desktop binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos
+          path: desktop/build/game_2048_desktop
