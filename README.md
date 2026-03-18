@@ -10,14 +10,6 @@ A touchscreen implementation of the classic [2048 game](https://github.com/gabri
 - **PMIC:** AXP2101 (battery + power management)
 - **Memory:** 16MB Flash, 8MB PSRAM
 
-## Features
-
-- Classic 2048 gameplay with swipe gestures
-- Tile animations (pop-in for new tiles, pulse on merge)
-- Score tracking with best score persisted to NVS flash
-- Win/lose overlays with "Keep Playing" and "Try Again" options
-- Full 2048 color palette
-
 ## Desktop Simulator
 
 Pre-built binaries for macOS, Linux, and Windows are available from the [Releases page](../../releases). Download the archive for your platform from the latest release.
@@ -99,6 +91,32 @@ cd -
 # Build and run
 make desktop-build
 make desktop-run
+```
+
+**Windows (requires Visual Studio with C compiler, cmake, and Git Bash or similar):**
+
+```bash
+# Download and set up SDL2
+curl -L -o sdl2.zip https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-devel-2.32.10-VC.zip
+unzip sdl2.zip -d C:/SDL2
+cd C:/SDL2/SDL2-2.32.10 && mkdir include/SDL2 && mv include/*.h include/SDL2/
+
+# Install LVGL v8.3 from source
+git clone --depth 1 --branch release/v8.3 https://github.com/lvgl/lvgl.git C:/tmp/lvgl
+cp desktop/lv_conf.h C:/tmp/lvgl/
+cd C:/tmp/lvgl && mkdir build && cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=C:/lvgl-install -DLV_CONF_PATH=C:/tmp/lvgl/lv_conf.h -DBUILD_SHARED_LIBS=OFF
+cmake --build . --config Release
+cmake --install . --config Release
+cd -
+
+# Build
+cmake -S desktop -B desktop/build -DCMAKE_PREFIX_PATH="C:/SDL2/SDL2-2.32.10;C:/lvgl-install"
+cmake --build desktop/build --config Release
+
+# Copy SDL2.dll next to the exe and run
+cp C:/SDL2/SDL2-2.32.10/lib/x64/SDL2.dll desktop/build/Release/
+desktop/build/Release/game_2048_desktop.exe
 ```
 
 ## ESP32 Firmware
