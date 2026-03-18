@@ -30,7 +30,7 @@
 #define LV_FONT_DEFAULT &lv_font_montserrat_14
 
 /* Performance monitor */
-#define LV_USE_PERF_MONITOR 1
+#define LV_USE_PERF_MONITOR 0
 
 /* Text */
 #define LV_TXT_ENC LV_TXT_ENC_UTF8
