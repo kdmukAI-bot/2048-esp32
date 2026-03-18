@@ -8,11 +8,12 @@ if(WIN32)
     # Windows: SDL2 ships cmake config; LVGL is found manually
     find_package(SDL2 REQUIRED CONFIG)
 
-    # SDL2::SDL2 sets include dir to .../include/SDL2/ (for #include <SDL.h>)
-    # but our code uses #include <SDL2/SDL.h>, so find the parent include dir
-    find_path(SDL2_PARENT_INCLUDE_DIR SDL2/SDL.h HINTS ${CMAKE_PREFIX_PATH})
+    # Find SDL2 include dir containing SDL2/SDL.h (for #include <SDL2/SDL.h>)
+    find_path(SDL2_PARENT_INCLUDE_DIR SDL2/SDL.h
+        HINTS ${CMAKE_PREFIX_PATH}
+        PATH_SUFFIXES include)
     if(NOT SDL2_PARENT_INCLUDE_DIR)
-        message(FATAL_ERROR "Could not find SDL2/SDL.h under CMAKE_PREFIX_PATH")
+        message(FATAL_ERROR "Could not find SDL2/SDL.h — set CMAKE_PREFIX_PATH to SDL2 install")
     endif()
 
     # LVGL installed to CMAKE_PREFIX_PATH — find headers and static lib

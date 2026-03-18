@@ -164,6 +164,11 @@ jobs:
         run: |
           curl -L -o sdl2.zip https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-devel-2.32.10-VC.zip
           unzip sdl2.zip -d /c/SDL2
+          # VC package has include/SDL.h; restructure to include/SDL2/SDL.h
+          # so #include <SDL2/SDL.h> works (matching Linux/macOS convention)
+          cd /c/SDL2/SDL2-2.32.10
+          mkdir -p include/SDL2
+          mv include/*.h include/SDL2/
           echo "SDL2_DIR=C:/SDL2/SDL2-2.32.10/cmake" >> "$GITHUB_ENV"
 
       - name: Install LVGL from source
