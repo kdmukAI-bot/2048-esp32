@@ -8,14 +8,11 @@ if(WIN32)
     # Windows: SDL2 ships cmake config; LVGL is found manually
     find_package(SDL2 REQUIRED CONFIG)
 
-    # SDL2::SDL2 sets include dir to .../include/ but our code uses
-    # #include <SDL2/SDL.h>, so we need the parent directory
-    get_target_property(_sdl2_inc SDL2::SDL2 INTERFACE_INCLUDE_DIRECTORIES)
-    if(_sdl2_inc)
-        foreach(_dir ${_sdl2_inc})
-            get_filename_component(_parent "${_dir}" DIRECTORY)
-            list(APPEND SDL2_PARENT_DIRS "${_parent}")
-        endforeach()
+    # SDL2::SDL2 sets include dir to .../include/SDL2/ (for #include <SDL.h>)
+    # but our code uses #include <SDL2/SDL.h>, so find the parent include dir
+    find_path(SDL2_PARENT_INCLUDE_DIR SDL2/SDL.h HINTS ${CMAKE_PREFIX_PATH})
+    if(NOT SDL2_PARENT_INCLUDE_DIR)
+        message(FATAL_ERROR "Could not find SDL2/SDL.h under CMAKE_PREFIX_PATH")
     endif()
 
     # LVGL installed to CMAKE_PREFIX_PATH — find headers and static lib
@@ -63,7 +60,7 @@ if(WIN32)
     target_include_directories(game_2048_desktop PRIVATE
         ${CMAKE_SOURCE_DIR}
         ${GAME_DIR}/include
-        ${SDL2_PARENT_DIRS}
+        ${SDL2_PARENT_INCLUDE_DIR}
         ${LVGL_INCLUDE_DIR}
         ${LVGL_INCLUDE_DIR}/lvgl
     )
