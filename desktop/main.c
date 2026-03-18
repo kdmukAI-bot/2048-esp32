@@ -24,10 +24,8 @@
 /* Display dimensions (native portrait) */
 #define DISP_HOR_RES 320
 #define DISP_VER_RES 480
-#define SDL_SCALE    2  /* 2x window: 640x960 */
-
-#define SDL_WIN_W (DISP_HOR_RES * SDL_SCALE)
-#define SDL_WIN_H (DISP_VER_RES * SDL_SCALE)
+#define SDL_WIN_W DISP_HOR_RES
+#define SDL_WIN_H DISP_VER_RES
 
 /* SDL state */
 static SDL_Window   *sdl_window   = NULL;
@@ -212,14 +210,13 @@ int main(int argc, char *argv[])
                 handle_key(e.key.keysym.sym);
                 break;
             case SDL_MOUSEMOTION:
-                /* Scale mouse coordinates from window to LVGL display coords */
-                mouse_x = e.motion.x / SDL_SCALE;
-                mouse_y = e.motion.y / SDL_SCALE;
+                mouse_x = e.motion.x;
+                mouse_y = e.motion.y;
                 break;
             case SDL_MOUSEBUTTONDOWN:
                 mouse_pressed = true;
-                mouse_x = e.button.x / SDL_SCALE;
-                mouse_y = e.button.y / SDL_SCALE;
+                mouse_x = e.button.x;
+                mouse_y = e.button.y;
                 break;
             case SDL_MOUSEBUTTONUP:
                 mouse_pressed = false;
