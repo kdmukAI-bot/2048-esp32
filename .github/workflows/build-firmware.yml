@@ -152,3 +152,50 @@ jobs:
         with:
           name: desktop-macos
           path: desktop/build/game_2048_desktop
+
+  desktop-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install SDL2
+        shell: bash
+        run: |
+          curl -L -o sdl2.zip https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-devel-2.32.10-VC.zip
+          unzip sdl2.zip -d /c/SDL2
+          echo "SDL2_DIR=C:/SDL2/SDL2-2.32.10/cmake" >> "$GITHUB_ENV"
+
+      - name: Install LVGL from source
+        shell: bash
+        run: |
+          git clone --depth 1 --branch release/v8.3 https://github.com/lvgl/lvgl.git /tmp/lvgl
+          cd /tmp/lvgl
+          cp "$GITHUB_WORKSPACE/desktop/lv_conf.h" .
+          mkdir build && cd build
+          cmake .. -DCMAKE_INSTALL_PREFIX=C:/lvgl-install \
+                   -DLV_CONF_PATH=C:/tmp/lvgl/lv_conf.h \
+                   -DBUILD_SHARED_LIBS=OFF
+          cmake --build . --config Release
+          cmake --install . --config Release
+
+      - name: Build desktop simulator
+        shell: bash
+        run: |
+          cmake -S desktop -B desktop/build \
+            -DCMAKE_PREFIX_PATH="C:/SDL2/SDL2-2.32.10;C:/lvgl-install"
+          cmake --build desktop/build --config Release
+
+      - name: Collect Windows binary
+        shell: bash
+        run: |
+          cp C:/SDL2/SDL2-2.32.10/lib/x64/SDL2.dll desktop/build/Release/
+          ls -la desktop/build/Release/
+
+      - name: Upload desktop binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows
+          path: |
+            desktop/build/Release/game_2048_desktop.exe
+            desktop/build/Release/SDL2.dll

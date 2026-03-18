@@ -13,7 +13,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <unistd.h>
 #include <SDL2/SDL.h>
 
 #include "lvgl.h"
@@ -81,7 +80,7 @@ static bool init_sdl(void)
     }
 
     sdl_window = SDL_CreateWindow(
-        "2048 - ESP32 Simulator",
+        "2048",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         SDL_WIN_W, SDL_WIN_H,
         0
