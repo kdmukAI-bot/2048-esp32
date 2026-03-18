@@ -1,4 +1,4 @@
-#include "bsp_i2c.h"
+#include "hw_i2c.h"
 #include "esp_log.h"
 #include "esp_err.h"
 #include "esp_check.h"
@@ -7,24 +7,24 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 
-SemaphoreHandle_t  bsp_i2c_mux;
+SemaphoreHandle_t  hw_i2c_mux;
 
-bool bsp_i2c_lock(uint32_t timeout_ms)
+bool hw_i2c_lock(uint32_t timeout_ms)
 {
-    assert(bsp_i2c_mux && "lvgl_port_init must be called first");
+    assert(hw_i2c_mux && "lvgl_port_init must be called first");
 
     const TickType_t timeout_ticks = (timeout_ms == 0) ? portMAX_DELAY : pdMS_TO_TICKS(timeout_ms);
-    return xSemaphoreTakeRecursive(bsp_i2c_mux, timeout_ticks) == pdTRUE;
+    return xSemaphoreTakeRecursive(hw_i2c_mux, timeout_ticks) == pdTRUE;
 }
 
-void bsp_i2c_unlock(void)
+void hw_i2c_unlock(void)
 {
-    assert(bsp_i2c_mux && "lvgl_port_init must be called first");
-    xSemaphoreGiveRecursive(bsp_i2c_mux);
+    assert(hw_i2c_mux && "lvgl_port_init must be called first");
+    xSemaphoreGiveRecursive(hw_i2c_mux);
 }
 
 
-i2c_master_bus_handle_t bsp_i2c_init(void)
+i2c_master_bus_handle_t hw_i2c_init(void)
 {
     i2c_master_bus_handle_t i2c_bus_handle;
     i2c_master_bus_config_t i2c_mst_config = {};
@@ -37,6 +37,6 @@ i2c_master_bus_handle_t bsp_i2c_init(void)
 
     ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_mst_config, &i2c_bus_handle));
 
-    bsp_i2c_mux = xSemaphoreCreateRecursiveMutex();
+    hw_i2c_mux = xSemaphoreCreateRecursiveMutex();
     return i2c_bus_handle;
 }

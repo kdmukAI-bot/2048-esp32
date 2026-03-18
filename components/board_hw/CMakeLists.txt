@@ -1,8 +1,7 @@
 set(SRC_FILES
-    "bsp_display.c"
-    "bsp_touch.c"
-    "bsp_i2c.c"
-    "bsp_axp2101.cpp"
+    "hw_display.c"
+    "hw_i2c.c"
+    "hw_pmic.cpp"
 )
 
 idf_component_register(

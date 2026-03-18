@@ -9,7 +9,7 @@
 
 #include "driver/i2c_master.h"
 
-#include "bsp_i2c.h"
+#include "hw_i2c.h"
 
 #define XPOWERS_CHIP_AXP2101
 #include "XPowersLib.h"
@@ -40,10 +40,10 @@ static int pmu_register_read(uint8_t devAddr, uint8_t regAddr, uint8_t *data, ui
         return -1;
     }
 
-    if (bsp_i2c_lock(0))
+    if (hw_i2c_lock(0))
     {
         ret = i2c_master_transmit_receive(i2c_device, (const uint8_t *)&regAddr, 1, data, len, pdMS_TO_TICKS(1000));
-        bsp_i2c_unlock();
+        hw_i2c_unlock();
     }
     return (ret == ESP_OK) ? 0 : -1;
 }
@@ -69,7 +69,7 @@ static int pmu_register_write_byte(uint8_t devAddr, uint8_t regAddr, uint8_t *da
     return ret == ESP_OK ? 0 : -1;
 }
 
-extern "C" esp_err_t bsp_axp2101_init(i2c_master_bus_handle_t bus_handle)
+extern "C" esp_err_t hw_pmic_init(i2c_master_bus_handle_t bus_handle)
 {
     i2c_init(bus_handle);
     //* Implemented using read and write callback methods, applicable to other platforms

@@ -1,5 +1,5 @@
-#ifndef __BSP_DISPLAY_H__
-#define __BSP_DISPLAY_H__
+#ifndef __HW_DISPLAY_H__
+#define __HW_DISPLAY_H__
 
 #include <stdio.h>
 #include "esp_lcd_panel_io.h"
@@ -33,10 +33,10 @@
 extern "C" {
 #endif
 
-void bsp_display_init(esp_lcd_panel_io_handle_t *io_handle, esp_lcd_panel_handle_t *panel_handle, size_t max_transfer_sz);
-void bsp_display_brightness_init(void);
-void bsp_display_set_brightness(uint8_t brightness);
-uint8_t bsp_display_get_brightness(void);
+void hw_display_init(esp_lcd_panel_io_handle_t *io_handle, esp_lcd_panel_handle_t *panel_handle, size_t max_transfer_sz);
+void hw_display_brightness_init(void);
+void hw_display_set_brightness(uint8_t brightness);
+uint8_t hw_display_get_brightness(void);
 
 #ifdef __cplusplus
 }

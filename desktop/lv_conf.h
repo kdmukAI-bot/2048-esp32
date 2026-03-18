@@ -9,17 +9,6 @@
 
 /* Color depth: 16-bit (RGB565) to match ESP32 display */
 #define LV_COLOR_DEPTH 16
-#define LV_COLOR_16_SWAP 0  /* No swap needed for SDL2 */
-
-/* Memory */
-#define LV_MEM_CUSTOM 1
-#define LV_MEM_CUSTOM_INCLUDE <stdlib.h>
-#define LV_MEM_CUSTOM_ALLOC malloc
-#define LV_MEM_CUSTOM_FREE free
-#define LV_MEM_CUSTOM_REALLOC realloc
-
-/* Display */
-#define LV_DPI_DEF 130
 
 /* Fonts — match ESP32 config */
 #define LV_FONT_MONTSERRAT_14 1
@@ -32,22 +21,18 @@
 /* Performance monitor */
 #define LV_USE_PERF_MONITOR 0
 
-/* Text */
-#define LV_TXT_ENC LV_TXT_ENC_UTF8
-
 /* Widgets */
-#define LV_USE_ANIMIMG 1
+#define LV_USE_ANIMIMAGE 1
 #define LV_USE_ARC 1
 #define LV_USE_BAR 1
-#define LV_USE_BTN 1
-#define LV_USE_BTNMATRIX 1
+#define LV_USE_BUTTON 1
+#define LV_USE_BUTTONMATRIX 1
 #define LV_USE_CANVAS 0
 #define LV_USE_CHART 0
 #define LV_USE_CHECKBOX 1
-#define LV_USE_COLORWHEEL 0
 #define LV_USE_DROPDOWN 1
-#define LV_USE_IMG 1
-#define LV_USE_IMGBTN 0
+#define LV_USE_IMAGE 1
+#define LV_USE_IMAGEBUTTON 0
 #define LV_USE_KEYBOARD 0
 #define LV_USE_LABEL 1
 #define LV_USE_LED 0

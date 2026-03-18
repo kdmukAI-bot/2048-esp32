@@ -1,5 +1,5 @@
-#ifndef __BSP_I2C_H__
-#define __BSP_I2C_H__
+#ifndef __HW_I2C_H__
+#define __HW_I2C_H__
 
 #include "driver/i2c_master.h"
 #include "driver/gpio.h"
@@ -12,9 +12,9 @@
 extern "C" {
 #endif
 
-i2c_master_bus_handle_t bsp_i2c_init(void);
-void bsp_i2c_unlock(void);
-bool bsp_i2c_lock(uint32_t timeout_ms);
+i2c_master_bus_handle_t hw_i2c_init(void);
+void hw_i2c_unlock(void);
+bool hw_i2c_lock(uint32_t timeout_ms);
 
 #ifdef __cplusplus
 }
@@ -22,4 +22,4 @@ bool bsp_i2c_lock(uint32_t timeout_ms);
 
 
 
-#endif //__BSP_I2C_H__
+#endif //__HW_I2C_H__

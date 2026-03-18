@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-esp_err_t bsp_axp2101_init(i2c_master_bus_handle_t bus_handle);
+esp_err_t hw_pmic_init(i2c_master_bus_handle_t bus_handle);
 void pmu_isr_handler(void);
 
 #ifdef __cplusplus

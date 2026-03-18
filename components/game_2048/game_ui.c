@@ -6,7 +6,7 @@
 #include <string.h>
 
 #ifndef DESKTOP_BUILD
-#include "lv_port.h"
+#include "esp_lvgl_port.h"
 #include "nvs_flash.h"
 #include "nvs.h"
 #include "esp_log.h"
@@ -145,19 +145,19 @@ static int cell_y(int r) { return CELL_GAP + r * (CELL_SIZE + CELL_GAP); }
 
 static void slide_x_cb(void *obj, int32_t v)
 {
-    lv_obj_set_x((lv_obj_t *)obj, (lv_coord_t)v);
+    lv_obj_set_x((lv_obj_t *)obj, (int32_t)v);
 }
 
 static void slide_y_cb(void *obj, int32_t v)
 {
-    lv_obj_set_y((lv_obj_t *)obj, (lv_coord_t)v);
+    lv_obj_set_y((lv_obj_t *)obj, (int32_t)v);
 }
 
 static void slide_complete(void)
 {
     /* Delete temporary fill objects */
     for (int i = 0; i < slide_fill_count; i++) {
-        lv_obj_del(slide_fills[i]);
+        lv_obj_delete(slide_fills[i]);
     }
     slide_fill_count = 0;
 
@@ -292,7 +292,7 @@ void game_on_swipe(direction_t dir)
         lv_obj_t *cell = cells[m->from_r][m->from_c];
 
         /* Bring sliding tile to front so it renders on top */
-        lv_obj_move_foreground(cell);
+        lv_obj_move_to_index(cell, -1);
 
         lv_anim_t a;
         lv_anim_init(&a);
@@ -334,14 +334,14 @@ static void try_again_overlay_cb(lv_event_t *e)
 static void remove_overlay(void)
 {
     if (overlay_obj) {
-        lv_obj_del(overlay_obj);
+        lv_obj_delete(overlay_obj);
         overlay_obj = NULL;
     }
 }
 
 static lv_obj_t *create_overlay_btn(lv_obj_t *parent, const char *text, lv_event_cb_t cb)
 {
-    lv_obj_t *btn = lv_btn_create(parent);
+    lv_obj_t *btn = lv_button_create(parent);
     lv_obj_set_size(btn, 120, 36);
     lv_obj_set_style_bg_color(btn, color_hex(0x8f7a66), 0);
     lv_obj_set_style_radius(btn, 4, 0);
@@ -466,7 +466,7 @@ void game_ui_init(lv_indev_t *touch_indev)
 
     /* Refresh (new game) icon button — right-aligned below scores */
     int btn_size = 36;
-    lv_obj_t *new_btn = lv_btn_create(scr);
+    lv_obj_t *new_btn = lv_button_create(scr);
     lv_obj_set_size(new_btn, btn_size, btn_size);
     lv_obj_set_pos(new_btn, SCREEN_W - btn_size - 10, 56);
     lv_obj_set_style_bg_color(new_btn, color_hex(0xbbada0), 0);
