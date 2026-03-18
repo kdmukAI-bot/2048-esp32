@@ -71,9 +71,11 @@ void game_add_random_tile(game_t *game)
 
 /*
  * Compress a single row/column toward index 0 (remove gaps).
+ * Tracks tile origins for slide animation.
  * Returns true if anything moved.
  */
-static bool compress(int line[GRID_SIZE])
+static bool compress(int line[GRID_SIZE], int origin[GRID_SIZE],
+                     int merge_from[GRID_SIZE])
 {
     bool moved = false;
     int pos = 0;
@@ -82,6 +84,10 @@ static bool compress(int line[GRID_SIZE])
             if (i != pos) {
                 line[pos] = line[i];
                 line[i] = 0;
+                origin[pos] = origin[i];
+                origin[i] = -1;
+                merge_from[pos] = merge_from[i];
+                merge_from[i] = -1;
                 moved = true;
             }
             pos++;
@@ -93,9 +99,11 @@ static bool compress(int line[GRID_SIZE])
 /*
  * Merge adjacent equal tiles in a compressed row/column.
  * Each tile can only merge once per move.
+ * Tracks the consumed tile's origin for slide animation.
  * Returns points scored.
  */
-static int merge(int line[GRID_SIZE], bool merged_flags[GRID_SIZE])
+static int merge(int line[GRID_SIZE], bool merged_flags[GRID_SIZE],
+                 int origin[GRID_SIZE], int merge_from[GRID_SIZE])
 {
     int points = 0;
     for (int i = 0; i < GRID_SIZE - 1; i++) {
@@ -103,6 +111,8 @@ static int merge(int line[GRID_SIZE], bool merged_flags[GRID_SIZE])
             line[i] *= 2;
             line[i + 1] = 0;
             merged_flags[i] = true;
+            merge_from[i] = origin[i + 1];
+            origin[i + 1] = -1;
             points += line[i];
             i++; /* Skip next — already consumed */
         }
@@ -149,6 +159,19 @@ static void set_merged_flag(game_t *game, direction_t dir, int line_idx, int pos
     }
 }
 
+/*
+ * Convert a line position back to grid (row, col) coordinates.
+ */
+static void line_pos_to_rc(direction_t dir, int line_idx, int pos, int *r, int *c)
+{
+    switch (dir) {
+    case DIR_LEFT:  *r = line_idx; *c = pos; break;
+    case DIR_RIGHT: *r = line_idx; *c = GRID_SIZE - 1 - pos; break;
+    case DIR_UP:    *r = pos; *c = line_idx; break;
+    case DIR_DOWN:  *r = GRID_SIZE - 1 - pos; *c = line_idx; break;
+    }
+}
+
 bool game_move(game_t *game, direction_t dir)
 {
     if (game->state == STATE_LOST) return false;
@@ -156,16 +179,25 @@ bool game_move(game_t *game, direction_t dir)
 
     bool moved = false;
     memset(game->merged, 0, sizeof(game->merged));
+    game->last_moves.count = 0;
 
     for (int idx = 0; idx < GRID_SIZE; idx++) {
         int line[GRID_SIZE];
         bool line_merged[GRID_SIZE] = {false};
+        int origin[GRID_SIZE];
+        int merge_from[GRID_SIZE];
 
         extract_line(game, dir, idx, line);
 
-        bool m1 = compress(line);
-        int points = merge(line, line_merged);
-        bool m2 = compress(line);
+        /* Initialize origin tracking */
+        for (int i = 0; i < GRID_SIZE; i++) {
+            origin[i] = (line[i] != 0) ? i : -1;
+            merge_from[i] = -1;
+        }
+
+        bool m1 = compress(line, origin, merge_from);
+        int points = merge(line, line_merged, origin, merge_from);
+        bool m2 = compress(line, origin, merge_from);
 
         if (m1 || m2 || points > 0) {
             moved = true;
@@ -179,6 +211,20 @@ bool game_move(game_t *game, direction_t dir)
         for (int i = 0; i < GRID_SIZE; i++) {
             if (line_merged[i]) {
                 set_merged_flag(game, dir, idx, i);
+            }
+        }
+
+        /* Record tile movements for slide animation */
+        for (int i = 0; i < GRID_SIZE; i++) {
+            if (origin[i] >= 0 && origin[i] != i) {
+                tile_move_t *m = &game->last_moves.moves[game->last_moves.count++];
+                line_pos_to_rc(dir, idx, origin[i], &m->from_r, &m->from_c);
+                line_pos_to_rc(dir, idx, i, &m->to_r, &m->to_c);
+            }
+            if (merge_from[i] >= 0) {
+                tile_move_t *m = &game->last_moves.moves[game->last_moves.count++];
+                line_pos_to_rc(dir, idx, merge_from[i], &m->from_r, &m->from_c);
+                line_pos_to_rc(dir, idx, i, &m->to_r, &m->to_c);
             }
         }
     }

@@ -20,12 +20,23 @@ typedef enum {
 } game_state_t;
 
 typedef struct {
+    int from_r, from_c;
+    int to_r, to_c;
+} tile_move_t;
+
+typedef struct {
+    tile_move_t moves[GRID_SIZE * GRID_SIZE];
+    int count;
+} move_list_t;
+
+typedef struct {
     int grid[GRID_SIZE][GRID_SIZE];
     int score;
     int best_score;
     game_state_t state;
     bool keep_playing;  /* Continue after reaching 2048 */
     bool merged[GRID_SIZE][GRID_SIZE];  /* Track merges within a single move */
+    move_list_t last_moves;  /* Tile movements for slide animation */
 } game_t;
 
 void game_init(game_t *game);
