@@ -54,7 +54,7 @@ add_executable(game_2048_desktop
 
 target_compile_definitions(game_2048_desktop PRIVATE
     DESKTOP_BUILD
-    LV_CONF_PATH=${CMAKE_SOURCE_DIR}/lv_conf.h
+    LV_CONF_INCLUDE_SIMPLE
 )
 
 if(WIN32)

@@ -150,6 +150,7 @@ jobs:
 
       - name: Build desktop simulator
         run: |
+          export PKG_CONFIG_PATH="/usr/local/share/pkgconfig:$PKG_CONFIG_PATH"
           cmake -S desktop -B desktop/build
           cmake --build desktop/build
 
