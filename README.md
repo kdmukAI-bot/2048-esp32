@@ -20,7 +20,7 @@ A touchscreen implementation of the classic [2048 game](https://github.com/gabri
 
 ## Desktop Simulator
 
-Pre-built binaries for macOS, Linux, and Windows are available as CI artifacts from the [Actions tab](../../actions). Download the artifact for your platform from the latest successful build.
+Pre-built binaries for macOS, Linux, and Windows are available from the [Releases page](../../releases). Download the archive for your platform from the latest release.
 
 ### Running pre-built binaries
 
