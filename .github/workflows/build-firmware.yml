@@ -99,12 +99,15 @@ jobs:
         run: |
           git clone --depth 1 --branch release/v9.5 https://github.com/lvgl/lvgl.git /tmp/lvgl
           cd /tmp/lvgl
+          # Remove ARM assembly files (not valid on x86)
+          find src -name '*.S' -delete
           cp ${{ github.workspace }}/desktop/lv_conf.h .
           mkdir build && cd build
           cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local \
-                   -DLV_CONF_PATH=/tmp/lvgl/lv_conf.h \
-                   -DLV_USE_DRAW_SW_ASM=LV_DRAW_SW_ASM_NONE \
-                   -DBUILD_SHARED_LIBS=OFF
+                   -DLV_BUILD_CONF_DIR=/tmp/lvgl \
+                   -DBUILD_SHARED_LIBS=OFF \
+                   -DCONFIG_LV_BUILD_DEMOS=OFF \
+                   -DCONFIG_LV_BUILD_EXAMPLES=OFF
           make -j$(nproc)
           sudo make install
           sudo ldconfig
@@ -134,12 +137,14 @@ jobs:
         run: |
           git clone --depth 1 --branch release/v9.5 https://github.com/lvgl/lvgl.git /tmp/lvgl
           cd /tmp/lvgl
+          find src -name '*.S' -delete
           cp ${{ github.workspace }}/desktop/lv_conf.h .
           mkdir build && cd build
           cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local \
-                   -DLV_CONF_PATH=/tmp/lvgl/lv_conf.h \
-                   -DLV_USE_DRAW_SW_ASM=LV_DRAW_SW_ASM_NONE \
-                   -DBUILD_SHARED_LIBS=OFF
+                   -DLV_BUILD_CONF_DIR=/tmp/lvgl \
+                   -DBUILD_SHARED_LIBS=OFF \
+                   -DCONFIG_LV_BUILD_DEMOS=OFF \
+                   -DCONFIG_LV_BUILD_EXAMPLES=OFF
           make -j$(sysctl -n hw.ncpu)
           sudo make install
 
@@ -177,12 +182,14 @@ jobs:
         run: |
           git clone --depth 1 --branch release/v9.5 https://github.com/lvgl/lvgl.git /tmp/lvgl
           cd /tmp/lvgl
+          find src -name '*.S' -delete
           cp "$GITHUB_WORKSPACE/desktop/lv_conf.h" .
           mkdir build && cd build
           cmake .. -DCMAKE_INSTALL_PREFIX=C:/lvgl-install \
-                   "-DLV_CONF_PATH=$(cygpath -m /tmp/lvgl/lv_conf.h)" \
-                   -DLV_USE_DRAW_SW_ASM=LV_DRAW_SW_ASM_NONE \
-                   -DBUILD_SHARED_LIBS=OFF
+                   "-DLV_BUILD_CONF_DIR=$(cygpath -m /tmp/lvgl)" \
+                   -DBUILD_SHARED_LIBS=OFF \
+                   -DCONFIG_LV_BUILD_DEMOS=OFF \
+                   -DCONFIG_LV_BUILD_EXAMPLES=OFF
           cmake --build . --config Release
           cmake --install . --config Release
 
