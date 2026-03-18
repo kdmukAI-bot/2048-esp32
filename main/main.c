@@ -61,8 +61,8 @@ static void io_expander_init(i2c_master_bus_handle_t bus_handle)
 static void lvgl_port_setup(void)
 {
     lvgl_port_cfg_t port_cfg = {
-        .task_priority = 4,
-        .task_stack = 1024 * 8,
+        .task_priority = 5,
+        .task_stack = 1024 * 12,
         .task_affinity = 1,
         .task_max_sleep_ms = 500,
         .timer_period_ms = 5,

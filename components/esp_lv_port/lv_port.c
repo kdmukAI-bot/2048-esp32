@@ -176,6 +176,7 @@ lv_disp_t *lvgl_port_add_disp(const lvgl_port_display_cfg_t *disp_cfg)
     esp_err_t ret = ESP_OK;
     lv_disp_t *disp = NULL;
     lv_color_t *buf1 = NULL;
+    lv_color_t *buf1b = NULL;  /* Double buffer */
     lv_color_t *buf2 = NULL;
     lv_color_t *buf3 = NULL;
     SemaphoreHandle_t trans_done_sem = NULL;
@@ -208,6 +209,10 @@ lv_disp_t *lvgl_port_add_disp(const lvgl_port_display_cfg_t *disp_cfg)
     buf1 = heap_caps_malloc(disp_cfg->buffer_size * sizeof(lv_color_t), buff_caps);
     ESP_GOTO_ON_FALSE(buf1, ESP_ERR_NO_MEM, err, TAG, "Not enough memory for LVGL buffer (buf1) allocation!");
 
+    /* Double buffering: LVGL draws to one buffer while the other is flushed via DMA */
+    buf1b = heap_caps_malloc(disp_cfg->buffer_size * sizeof(lv_color_t), buff_caps);
+    ESP_GOTO_ON_FALSE(buf1b, ESP_ERR_NO_MEM, err, TAG, "Not enough memory for LVGL buffer (buf1b) allocation!");
+
     if (disp_ctx->trans_size) {
 
         uint32_t caps = MALLOC_CAP_DMA;
@@ -228,8 +233,8 @@ lv_disp_t *lvgl_port_add_disp(const lvgl_port_display_cfg_t *disp_cfg)
     lv_disp_draw_buf_t *disp_buf = malloc(sizeof(lv_disp_draw_buf_t));
     ESP_GOTO_ON_FALSE(disp_buf, ESP_ERR_NO_MEM, err, TAG, "Not enough memory for LVGL display buffer allocation!");
 
-    /* initialize LVGL draw buffers */
-    lv_disp_draw_buf_init(disp_buf, buf1, NULL, disp_cfg->buffer_size);
+    /* initialize LVGL draw buffers (double-buffered) */
+    lv_disp_draw_buf_init(disp_buf, buf1, buf1b, disp_cfg->buffer_size);
 
     ESP_LOGD(TAG, "Register display driver to LVGL");
     lv_disp_drv_init(&disp_ctx->disp_drv);
@@ -256,6 +261,9 @@ err:
     if (ret != ESP_OK) {
         if (buf1) {
             free(buf1);
+        }
+        if (buf1b) {
+            free(buf1b);
         }
         if (buf2) {
             free(buf2);
