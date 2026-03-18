@@ -104,7 +104,7 @@ jobs:
           mkdir build && cd build
           cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local \
                    -DLV_CONF_PATH=/tmp/lvgl/lv_conf.h \
-                   -DBUILD_SHARED_LIBS=ON
+                   -DBUILD_SHARED_LIBS=OFF
           make -j$(nproc)
           sudo make install
           sudo ldconfig
@@ -128,7 +128,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install sdl2 pkg-config cmake
+          brew install sdl2
 
       - name: Install LVGL from source
         run: |
@@ -138,7 +138,7 @@ jobs:
           mkdir build && cd build
           cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local \
                    -DLV_CONF_PATH=/tmp/lvgl/lv_conf.h \
-                   -DBUILD_SHARED_LIBS=ON
+                   -DBUILD_SHARED_LIBS=OFF
           make -j$(sysctl -n hw.ncpu)
           sudo make install
 
