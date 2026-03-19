@@ -26,10 +26,18 @@
 #if BOARD_DISPLAY_DRIVER == DISPLAY_AXS15231B
 #include "board_display_axs15231b.h"
 #include "esp_lcd_axs15231b.h"
+#elif BOARD_DISPLAY_DRIVER == DISPLAY_ST7796
+#include "board_display_st7796.h"
+#elif BOARD_DISPLAY_DRIVER == DISPLAY_ST7789
+#include "board_display_st7789.h"
 #endif
 
 #if BOARD_TOUCH_DRIVER == TOUCH_AXS15231B
 #include "board_touch_axs15231b.h"
+#elif BOARD_TOUCH_DRIVER == TOUCH_FT6336
+#include "board_touch_ft6336.h"
+#elif BOARD_TOUCH_DRIVER == TOUCH_CST816D
+#include "board_touch_cst816d.h"
 #endif
 
 #if BOARD_HAS_IO_EXPANDER
@@ -192,11 +200,21 @@ int board_init(lv_display_t **disp, lv_indev_t **touch_indev)
 #if BOARD_DISPLAY_DRIVER == DISPLAY_AXS15231B
     board_display_axs15231b_init(&io_handle, &panel_handle,
                                   BOARD_LCD_H_RES * BOARD_LCD_V_RES);
+#elif BOARD_DISPLAY_DRIVER == DISPLAY_ST7796
+    board_display_st7796_init(&io_handle, &panel_handle,
+                               BOARD_LCD_H_RES * BOARD_LCD_V_RES);
+#elif BOARD_DISPLAY_DRIVER == DISPLAY_ST7789
+    board_display_st7789_init(&io_handle, &panel_handle,
+                               BOARD_LCD_H_RES * BOARD_LCD_V_RES);
 #endif
 
     /* Step 5: Touch */
 #if BOARD_TOUCH_DRIVER == TOUCH_AXS15231B
     touch_handle = board_touch_axs15231b_init(i2c_bus, BOARD_LCD_H_RES, BOARD_LCD_V_RES);
+#elif BOARD_TOUCH_DRIVER == TOUCH_FT6336
+    touch_handle = board_touch_ft6336_init(i2c_bus, BOARD_LCD_H_RES, BOARD_LCD_V_RES);
+#elif BOARD_TOUCH_DRIVER == TOUCH_CST816D
+    touch_handle = board_touch_cst816d_init(i2c_bus, BOARD_LCD_H_RES, BOARD_LCD_V_RES);
 #endif
 
     /* Step 6: Backlight */

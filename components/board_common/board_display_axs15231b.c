@@ -1,5 +1,9 @@
-#include "board_display_axs15231b.h"
+#include "board.h"
 #include "board_config.h"
+
+#if BOARD_DISPLAY_DRIVER == DISPLAY_AXS15231B
+
+#include "board_display_axs15231b.h"
 
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
@@ -83,3 +87,5 @@ void board_display_axs15231b_init(esp_lcd_panel_io_handle_t *io_handle,
     ESP_ERROR_CHECK(esp_lcd_panel_init(*panel_handle));
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(*panel_handle, false));
 }
+
+#endif /* BOARD_DISPLAY_DRIVER == DISPLAY_AXS15231B */

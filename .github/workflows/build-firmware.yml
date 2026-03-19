@@ -23,6 +23,15 @@ jobs:
   build:
     needs: resolve-image-owner
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - board: waveshare_s3_lcd35b
+            target: esp32s3
+          - board: waveshare_s3_lcd35
+            target: esp32s3
+          - board: waveshare_s3_lcd2
+            target: esp32s3
     defaults:
       run:
         shell: bash
@@ -46,19 +55,21 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /root/.cache/ccache
-          key: ccache-waveshare_s3_lcd35b-${{ hashFiles('main/**', 'components/**', 'boards/**') }}
+          key: ccache-${{ matrix.board }}-${{ hashFiles('main/**', 'components/**', 'boards/**') }}
           restore-keys: |
-            ccache-waveshare_s3_lcd35b-
+            ccache-${{ matrix.board }}-
 
       - name: Build firmware
         run: |
           source "$IDF_PATH/export.sh"
-          idf.py set-target esp32s3
-          idf.py build -DBOARD=waveshare_s3_lcd35b -DCCACHE_ENABLE=1 2>&1 | tee build-log.txt
+          idf.py set-target ${{ matrix.target }}
+          idf.py build -DBOARD=${{ matrix.board }} -DCCACHE_ENABLE=1 2>&1 | tee build-log.txt
 
       - name: Record build provenance
         run: |
           {
+            echo "board=${{ matrix.board }}"
+            echo "target=${{ matrix.target }}"
             echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "git_ref=${{ github.ref }}"
             echo "git_sha=${{ github.sha }}"
@@ -81,7 +92,7 @@ jobs:
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-2048-esp32s3
+          name: firmware-2048-${{ matrix.board }}
           path: out/
 
   desktop-linux:
