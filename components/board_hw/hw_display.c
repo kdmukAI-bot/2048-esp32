@@ -1,4 +1,4 @@
-#include "bsp_display.h"
+#include "hw_display.h"
 
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
@@ -12,7 +12,7 @@
 #include "esp_lcd_panel_ops.h"
 #include "esp_log.h"
 
-static const char *TAG = "bsp_display";
+static const char *TAG = "hw_display";
 
 static uint8_t g_brightness = 0;
 
@@ -53,7 +53,7 @@ static const axs15231b_lcd_init_cmd_t lcd_init_cmds[] = {
 };
 
 
-void bsp_display_init(esp_lcd_panel_io_handle_t *io_handle, esp_lcd_panel_handle_t *panel_handle, size_t max_transfer_sz)
+void hw_display_init(esp_lcd_panel_io_handle_t *io_handle, esp_lcd_panel_handle_t *panel_handle, size_t max_transfer_sz)
 {
 
     ESP_LOGI(TAG, "Install panel IO");
@@ -99,7 +99,7 @@ void bsp_display_init(esp_lcd_panel_io_handle_t *io_handle, esp_lcd_panel_handle
 }
 
 
-void bsp_display_brightness_init(void)
+void hw_display_brightness_init(void)
 {
     // Prepare and then apply the LEDC PWM timer configuration
     ledc_timer_config_t ledc_timer = {};
@@ -122,7 +122,7 @@ void bsp_display_brightness_init(void)
     ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
 }
 
-void bsp_display_set_brightness(uint8_t brightness)
+void hw_display_set_brightness(uint8_t brightness)
 {
     if (brightness > 100)
     {
@@ -139,7 +139,7 @@ void bsp_display_set_brightness(uint8_t brightness)
     ESP_LOGI(TAG, "LCD brightness set to %d%%", brightness);
 }
 
-uint8_t bsp_display_get_brightness(void)
+uint8_t hw_display_get_brightness(void)
 {
     return g_brightness;
 }

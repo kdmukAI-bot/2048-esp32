@@ -15,7 +15,7 @@ extern void game_on_swipe(direction_t dir);
 
 static void gesture_event_cb(lv_event_t *e)
 {
-    lv_dir_t gesture_dir = lv_indev_get_gesture_dir(lv_indev_get_act());
+    lv_dir_t gesture_dir = lv_indev_get_gesture_dir(lv_indev_active());
 
     direction_t dir;
     switch (gesture_dir) {

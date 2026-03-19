@@ -93,18 +93,21 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libsdl2-dev lv2-dev cmake pkg-config
+          sudo apt-get install -y libsdl2-dev cmake pkg-config
 
       - name: Install LVGL from source
         run: |
-          git clone --depth 1 --branch release/v8.3 https://github.com/lvgl/lvgl.git /tmp/lvgl
+          git clone --depth 1 --branch release/v9.5 https://github.com/lvgl/lvgl.git /tmp/lvgl
           cd /tmp/lvgl
-          # Use our lv_conf.h
+          # Remove ARM assembly files (not valid on x86)
+          find src -name '*.S' -delete
           cp ${{ github.workspace }}/desktop/lv_conf.h .
           mkdir build && cd build
           cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local \
-                   -DLV_CONF_PATH=/tmp/lvgl/lv_conf.h \
-                   -DBUILD_SHARED_LIBS=OFF
+                   -DLV_BUILD_CONF_DIR=/tmp/lvgl \
+                   -DBUILD_SHARED_LIBS=OFF \
+                   -DCONFIG_LV_BUILD_DEMOS=OFF \
+                   -DCONFIG_LV_BUILD_EXAMPLES=OFF
           make -j$(nproc)
           sudo make install
           sudo ldconfig
@@ -132,18 +135,22 @@ jobs:
 
       - name: Install LVGL from source
         run: |
-          git clone --depth 1 --branch release/v8.3 https://github.com/lvgl/lvgl.git /tmp/lvgl
+          git clone --depth 1 --branch release/v9.5 https://github.com/lvgl/lvgl.git /tmp/lvgl
           cd /tmp/lvgl
+          find src -name '*.S' -delete
           cp ${{ github.workspace }}/desktop/lv_conf.h .
           mkdir build && cd build
           cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local \
-                   -DLV_CONF_PATH=/tmp/lvgl/lv_conf.h \
-                   -DBUILD_SHARED_LIBS=OFF
+                   -DLV_BUILD_CONF_DIR=/tmp/lvgl \
+                   -DBUILD_SHARED_LIBS=OFF \
+                   -DCONFIG_LV_BUILD_DEMOS=OFF \
+                   -DCONFIG_LV_BUILD_EXAMPLES=OFF
           make -j$(sysctl -n hw.ncpu)
           sudo make install
 
       - name: Build desktop simulator
         run: |
+          export PKG_CONFIG_PATH="/usr/local/share/pkgconfig:$PKG_CONFIG_PATH"
           cmake -S desktop -B desktop/build
           cmake --build desktop/build
 
@@ -174,13 +181,16 @@ jobs:
       - name: Install LVGL from source
         shell: bash
         run: |
-          git clone --depth 1 --branch release/v8.3 https://github.com/lvgl/lvgl.git /tmp/lvgl
+          git clone --depth 1 --branch release/v9.5 https://github.com/lvgl/lvgl.git /tmp/lvgl
           cd /tmp/lvgl
+          find src -name '*.S' -delete
           cp "$GITHUB_WORKSPACE/desktop/lv_conf.h" .
           mkdir build && cd build
           cmake .. -DCMAKE_INSTALL_PREFIX=C:/lvgl-install \
-                   -DLV_CONF_PATH=C:/tmp/lvgl/lv_conf.h \
-                   -DBUILD_SHARED_LIBS=OFF
+                   "-DLV_BUILD_CONF_DIR=$(cygpath -m /tmp/lvgl)" \
+                   -DBUILD_SHARED_LIBS=OFF \
+                   -DCONFIG_LV_BUILD_DEMOS=OFF \
+                   -DCONFIG_LV_BUILD_EXAMPLES=OFF
           cmake --build . --config Release
           cmake --install . --config Release
 

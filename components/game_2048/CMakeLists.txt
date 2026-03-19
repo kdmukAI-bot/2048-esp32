@@ -8,5 +8,5 @@ idf_component_register(
          "../../fonts/font_clear_sans_bold_50.c"
          "../../fonts/font_clear_sans_regular_14.c"
     INCLUDE_DIRS "include"
-    REQUIRES "esp_lv_port" "lvgl__lvgl" "nvs_flash"
+    REQUIRES "esp_lvgl_port" "lvgl" "nvs_flash"
 )

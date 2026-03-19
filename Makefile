@@ -3,39 +3,53 @@
 # Local dev uses the same prebaked GHCR image as CI.
 # Override IMAGE if you need a pinned tag.
 IMAGE ?= ghcr.io/kdmukai-bot/2048-esp32-base:latest
-CACHE_VOL ?= 2048-esp32-cache
+CACHE_DIR ?= $(HOME)/.cache/2048-esp32-build
+
+# Run as host user so build artifacts aren't root-owned.
+# Cache uses a host bind mount (auto-created by mkdir) instead of a Docker
+# named volume, which avoids root-ownership problems.
+DOCKER_USER ?= --user $(shell id -u):$(shell id -g)
 
 docker-shell:
+	@mkdir -p $(CACHE_DIR)
 	docker run --rm -it \
+		$(DOCKER_USER) \
+		-e HOME=/tmp/build-home \
 		-v $(PWD):/workspace/2048-esp32 \
-		-v $(CACHE_VOL):/root/.cache \
+		-v $(CACHE_DIR):/cache \
 		-w /workspace/2048-esp32 \
-		$(IMAGE) bash
+		$(IMAGE) bash -c 'mkdir -p /tmp/build-home && exec bash'
 
 # Build firmware inside Docker
 docker-build:
+	@mkdir -p $(CACHE_DIR)
 	docker run --rm -t \
+		$(DOCKER_USER) \
+		-e HOME=/tmp/build-home \
 		-v $(PWD):/workspace/2048-esp32 \
-		-v $(CACHE_VOL):/root/.cache \
+		-v $(CACHE_DIR):/cache \
 		-w /workspace/2048-esp32 \
-		$(IMAGE) bash -lc './scripts/docker_build.sh'
+		$(IMAGE) bash -c './scripts/docker_build.sh'
 
 # Flash via USB (requires device access — run outside Docker or with --device)
 docker-flash:
+	@mkdir -p $(CACHE_DIR)
 	docker run --rm -it \
+		$(DOCKER_USER) \
+		-e HOME=/tmp/build-home \
 		--device /dev/ttyACM0 \
 		-v $(PWD):/workspace/2048-esp32 \
-		-v $(CACHE_VOL):/root/.cache \
+		-v $(CACHE_DIR):/cache \
 		-w /workspace/2048-esp32 \
-		$(IMAGE) bash -lc './scripts/docker_flash.sh'
+		$(IMAGE) bash -c './scripts/docker_flash.sh'
 
-# Safe clean: remove build outputs (may need sudo if created by root in container)
+# Safe clean: remove build outputs
 clean:
 	rm -rf build sdkconfig sdkconfig.old managed_components dependencies.lock
 
-# Deeper clean: clean + purge Docker cache volume
+# Deeper clean: clean + purge build cache
 clean-purge-cache: clean
-	docker volume rm $(CACHE_VOL) 2>/dev/null || true
+	rm -rf $(CACHE_DIR)
 
 # ── Desktop simulator (SDL2 + system LVGL) ──
 desktop-build:

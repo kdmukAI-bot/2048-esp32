@@ -158,8 +158,7 @@ GitHub Actions builds firmware and desktop simulators on every push/PR. Artifact
 ├── main/
 │   └── main.c                  # BSP init sequence + game launch
 ├── components/
-│   ├── esp_bsp/                # Display, touch, I2C, PMIC drivers
-│   ├── esp_lv_port/            # LVGL display/input porting layer
+│   ├── board_hw/               # Display, I2C, PMIC drivers (board-specific)
 │   ├── XPowersLib/             # AXP2101 PMIC library
 │   └── game_2048/              # Game logic, LVGL UI, gesture input
 │       ├── game_logic.c        # Pure C game engine (no LVGL dependency)
@@ -174,7 +173,7 @@ GitHub Actions builds firmware and desktop simulators on every push/PR. Artifact
 └── partitions.csv              # 2MB app + NVS
 ```
 
-The BSP drivers (`esp_bsp`, `esp_lv_port`, `XPowersLib`) are copied from the [seedsigner-c-modules](https://github.com/SeedSigner/seedsigner-c-modules) repository, stripped of camera/audio/SD/IMU/RTC dependencies.
+The board hardware drivers (`board_hw`, `XPowersLib`) are copied from the [seedsigner-c-modules](https://github.com/SeedSigner/seedsigner-c-modules) repository, stripped of camera/audio/SD/IMU/RTC dependencies. Touch input and LVGL porting use standard ESP Component Registry packages (`espressif/esp_lcd_axs15231b`, `espressif/esp_lvgl_port`).
 
 ## Architecture
 

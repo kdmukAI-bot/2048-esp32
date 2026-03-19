@@ -32,15 +32,14 @@ static SDL_Renderer *sdl_renderer = NULL;
 static SDL_Texture  *sdl_texture  = NULL;
 
 /* LVGL display buffer */
-static lv_disp_draw_buf_t disp_buf;
-static lv_color_t buf1[DISP_HOR_RES * DISP_VER_RES];
+static uint8_t buf1[DISP_HOR_RES * DISP_VER_RES * 2];
 
 /* Mouse state for LVGL input driver */
 static int32_t mouse_x = 0, mouse_y = 0;
 static bool mouse_pressed = false;
 
 /* ── SDL2 display flush callback ── */
-static void sdl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
+static void sdl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
     /* Update the full texture from the LVGL buffer */
     int32_t w = area->x2 - area->x1 + 1;
@@ -54,21 +53,21 @@ static void sdl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *
     };
 
     /* LVGL uses RGB565 (LV_COLOR_DEPTH=16) */
-    SDL_UpdateTexture(sdl_texture, &rect, color_p, w * sizeof(lv_color_t));
+    SDL_UpdateTexture(sdl_texture, &rect, px_map, w * 2);
     SDL_RenderClear(sdl_renderer);
     SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
     SDL_RenderPresent(sdl_renderer);
 
-    lv_disp_flush_ready(drv);
+    lv_display_flush_ready(disp);
 }
 
 /* ── SDL2 mouse input callback ── */
-static void sdl_mouse_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data)
+static void sdl_mouse_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
 {
-    (void)drv;
+    (void)indev;
     data->point.x = mouse_x;
     data->point.y = mouse_y;
-    data->state = mouse_pressed ? LV_INDEV_STATE_PR : LV_INDEV_STATE_REL;
+    data->state = mouse_pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
 }
 
 /* ── Initialize SDL2 + LVGL ── */
@@ -115,25 +114,18 @@ static lv_indev_t *init_lvgl_display(void)
 {
     lv_init();
 
-    /* Display buffer — full screen, single buffer */
-    lv_disp_draw_buf_init(&disp_buf, buf1, NULL, DISP_HOR_RES * DISP_VER_RES);
+    /* Display — v9 API */
+    lv_display_t *disp = lv_display_create(DISP_HOR_RES, DISP_VER_RES);
+    lv_display_set_flush_cb(disp, sdl_flush_cb);
+    lv_display_set_color_format(disp, LV_COLOR_FORMAT_RGB565);
+    lv_display_set_buffers(disp, buf1, NULL,
+                           DISP_HOR_RES * DISP_VER_RES * 2,
+                           LV_DISPLAY_RENDER_MODE_FULL);
 
-    /* Display driver */
-    static lv_disp_drv_t disp_drv;
-    lv_disp_drv_init(&disp_drv);
-    disp_drv.hor_res = DISP_HOR_RES;
-    disp_drv.ver_res = DISP_VER_RES;
-    disp_drv.flush_cb = sdl_flush_cb;
-    disp_drv.draw_buf = &disp_buf;
-    disp_drv.full_refresh = 1;
-    lv_disp_drv_register(&disp_drv);
-
-    /* Mouse input driver */
-    static lv_indev_drv_t indev_drv;
-    lv_indev_drv_init(&indev_drv);
-    indev_drv.type = LV_INDEV_TYPE_POINTER;
-    indev_drv.read_cb = sdl_mouse_read_cb;
-    lv_indev_t *mouse_indev = lv_indev_drv_register(&indev_drv);
+    /* Mouse input — v9 API */
+    lv_indev_t *mouse_indev = lv_indev_create();
+    lv_indev_set_type(mouse_indev, LV_INDEV_TYPE_POINTER);
+    lv_indev_set_read_cb(mouse_indev, sdl_mouse_read_cb);
 
     return mouse_indev;
 }
