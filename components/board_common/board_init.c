@@ -1,0 +1,223 @@
+/**
+ * Generic board initialisation.
+ *
+ * Reads board_config.h (selected at build time via BOARD CMake variable)
+ * and dispatches to the correct driver init functions.
+ */
+#include <stdio.h>
+#include <string.h>
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
+#include "esp_log.h"
+#include "esp_heap_caps.h"
+
+#include "board.h"
+#include "board_config.h"
+
+#include "board_i2c.h"
+#include "board_backlight.h"
+
+#if BOARD_HAS_PMIC
+#include "board_pmic.h"
+#endif
+
+#if BOARD_DISPLAY_DRIVER == DISPLAY_AXS15231B
+#include "board_display_axs15231b.h"
+#include "esp_lcd_axs15231b.h"
+#endif
+
+#if BOARD_TOUCH_DRIVER == TOUCH_AXS15231B
+#include "board_touch_axs15231b.h"
+#endif
+
+#if BOARD_HAS_IO_EXPANDER
+#include "esp_io_expander_tca9554.h"
+#endif
+
+#include "esp_lvgl_port.h"
+#include "esp_lcd_touch.h"
+#include "lvgl.h"
+
+static const char *TAG = "board";
+
+/* ── Resolution globals ── */
+const int LCD_H_RES_VAL = BOARD_LCD_H_RES;
+const int LCD_V_RES_VAL = BOARD_LCD_V_RES;
+
+/* ── Hardware handles ── */
+static esp_lcd_panel_io_handle_t io_handle = NULL;
+static esp_lcd_panel_handle_t panel_handle = NULL;
+static esp_lcd_touch_handle_t touch_handle = NULL;
+
+#if BOARD_HAS_IO_EXPANDER
+static esp_io_expander_handle_t expander_handle = NULL;
+#endif
+
+/* ── AXS15231B RASET workaround (custom flush + DMA bounce) ── */
+#if BOARD_DISPLAY_QUIRK_RASET_BUG
+
+static SemaphoreHandle_t flush_done_sem = NULL;
+static uint8_t *swap_buf[2] = {NULL, NULL};
+
+static bool flush_ready_cb(esp_lcd_panel_io_handle_t panel_io,
+                           esp_lcd_panel_io_event_data_t *edata, void *user_ctx)
+{
+    BaseType_t woken = pdFALSE;
+    xSemaphoreGiveFromISR(flush_done_sem, &woken);
+    return (woken == pdTRUE);
+}
+
+static void axs15231b_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
+{
+    if (!lv_display_flush_is_last(disp)) {
+        lv_display_flush_ready(disp);
+        return;
+    }
+
+    const int bpp = 2;  /* RGB565 */
+    int buf_idx = 0;
+
+    for (int y = 0; y < BOARD_LCD_V_RES; y += BOARD_LINES_PER_BAND) {
+        int band_h = (y + BOARD_LINES_PER_BAND > BOARD_LCD_V_RES)
+                     ? BOARD_LCD_V_RES - y : BOARD_LINES_PER_BAND;
+        int band_bytes = BOARD_LCD_H_RES * band_h * bpp;
+        uint8_t *src = px_map + (y * BOARD_LCD_H_RES * bpp);
+        uint8_t *dst = swap_buf[buf_idx];
+
+        memcpy(dst, src, band_bytes);
+        lv_draw_sw_rgb565_swap(dst, BOARD_LCD_H_RES * band_h);
+
+        if (y > 0) {
+            xSemaphoreTake(flush_done_sem, portMAX_DELAY);
+        }
+
+        esp_lcd_panel_draw_bitmap(panel_handle, 0, y, BOARD_LCD_H_RES, y + band_h, dst);
+        buf_idx ^= 1;
+    }
+
+    xSemaphoreTake(flush_done_sem, portMAX_DELAY);
+    lv_display_flush_ready(disp);
+}
+
+#endif /* BOARD_DISPLAY_QUIRK_RASET_BUG */
+
+/* ── IO Expander ── */
+#if BOARD_HAS_IO_EXPANDER
+static void io_expander_init(i2c_master_bus_handle_t bus)
+{
+    ESP_ERROR_CHECK(esp_io_expander_new_i2c_tca9554(bus, BOARD_IO_EXPANDER_ADDR, &expander_handle));
+    ESP_ERROR_CHECK(esp_io_expander_set_dir(expander_handle, BOARD_IO_EXPANDER_RST_PIN, IO_EXPANDER_OUTPUT));
+    ESP_ERROR_CHECK(esp_io_expander_set_level(expander_handle, BOARD_IO_EXPANDER_RST_PIN, 0));
+    vTaskDelay(pdMS_TO_TICKS(100));
+    ESP_ERROR_CHECK(esp_io_expander_set_level(expander_handle, BOARD_IO_EXPANDER_RST_PIN, 1));
+    vTaskDelay(pdMS_TO_TICKS(200));
+}
+#endif
+
+/* ── LVGL port setup ── */
+static void lvgl_port_setup(lv_display_t **disp_out, lv_indev_t **touch_out)
+{
+#if BOARD_DISPLAY_QUIRK_RASET_BUG
+    flush_done_sem = xSemaphoreCreateBinary();
+    swap_buf[0] = heap_caps_malloc(BOARD_LCD_H_RES * BOARD_LINES_PER_BAND * 2, MALLOC_CAP_DMA);
+    swap_buf[1] = heap_caps_malloc(BOARD_LCD_H_RES * BOARD_LINES_PER_BAND * 2, MALLOC_CAP_DMA);
+    assert(swap_buf[0] != NULL && swap_buf[1] != NULL);
+#endif
+
+    lvgl_port_cfg_t port_cfg = {
+        .task_priority = BOARD_LVGL_TASK_PRIORITY,
+        .task_stack = BOARD_LVGL_TASK_STACK,
+        .task_affinity = BOARD_LVGL_TASK_AFFINITY,
+        .task_max_sleep_ms = BOARD_LVGL_MAX_SLEEP_MS,
+        .timer_period_ms = BOARD_LVGL_TIMER_PERIOD_MS,
+    };
+    lvgl_port_init(&port_cfg);
+
+    lvgl_port_display_cfg_t disp_cfg = {
+        .io_handle = io_handle,
+        .panel_handle = panel_handle,
+        .buffer_size = BOARD_LCD_H_RES * BOARD_LCD_V_RES,
+        .trans_size = 0,
+        .hres = BOARD_LCD_H_RES,
+        .vres = BOARD_LCD_V_RES,
+        .color_format = LV_COLOR_FORMAT_RGB565,
+        .flags = {
+#if BOARD_DISPLAY_DIRECT_MODE
+            .buff_spiram = true,
+            .direct_mode = true,
+#endif
+        },
+    };
+    *disp_out = lvgl_port_add_disp(&disp_cfg);
+
+#if BOARD_DISPLAY_QUIRK_RASET_BUG
+    lv_display_set_flush_cb(*disp_out, axs15231b_flush_cb);
+
+    const esp_lcd_panel_io_callbacks_t io_cbs = {
+        .on_color_trans_done = flush_ready_cb,
+    };
+    esp_lcd_panel_io_register_event_callbacks(io_handle, &io_cbs, *disp_out);
+#endif
+
+    lvgl_port_touch_cfg_t touch_cfg = {
+        .disp = *disp_out,
+        .handle = touch_handle,
+    };
+    *touch_out = lvgl_port_add_touch(&touch_cfg);
+}
+
+/* ── Board interface implementation ── */
+
+int board_init(lv_display_t **disp, lv_indev_t **touch_indev)
+{
+    ESP_LOGI(TAG, "Initializing %s...", BOARD_NAME);
+
+    /* Step 1: I2C bus */
+    i2c_master_bus_handle_t i2c_bus = board_i2c_init(
+        BOARD_PIN_I2C_SDA, BOARD_PIN_I2C_SCL, BOARD_I2C_PORT);
+
+    /* Step 2: IO expander (if present) */
+#if BOARD_HAS_IO_EXPANDER
+    io_expander_init(i2c_bus);
+#endif
+
+    /* Step 3: PMIC (if present) */
+#if BOARD_HAS_PMIC
+    board_pmic_init(i2c_bus);
+#endif
+
+    /* Step 4: Display */
+#if BOARD_DISPLAY_DRIVER == DISPLAY_AXS15231B
+    board_display_axs15231b_init(&io_handle, &panel_handle,
+                                  BOARD_LCD_H_RES * BOARD_LCD_V_RES);
+#endif
+
+    /* Step 5: Touch */
+#if BOARD_TOUCH_DRIVER == TOUCH_AXS15231B
+    touch_handle = board_touch_axs15231b_init(i2c_bus, BOARD_LCD_H_RES, BOARD_LCD_V_RES);
+#endif
+
+    /* Step 6: Backlight */
+    board_backlight_init(BOARD_PIN_LCD_BL);
+    board_backlight_set(100);
+
+    /* Step 7: LVGL port */
+    lvgl_port_setup(disp, touch_indev);
+
+    ESP_LOGI(TAG, "Board initialized.");
+    return 0;
+}
+
+void board_run(void)
+{
+    while (1) {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
+
+void app_main(void)
+{
+    game_main();
+}

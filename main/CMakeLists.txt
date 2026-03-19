@@ -1,5 +1,5 @@
 idf_component_register(
-    SRCS "main.c"
+    SRCS "game_main.c"
     INCLUDE_DIRS "."
-    REQUIRES "board_hw" "esp_lvgl_port" "game_2048"
+    REQUIRES "board_common" "esp_lvgl_port" "game_2048"
 )

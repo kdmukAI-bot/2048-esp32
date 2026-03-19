@@ -3,12 +3,13 @@ project(game_2048_desktop C)
 
 set(CMAKE_C_STANDARD 11)
 
+# Repo root (two levels up from boards/desktop/)
+set(REPO_ROOT ${CMAKE_SOURCE_DIR}/../..)
+
 # ── Find dependencies ──
 if(WIN32)
-    # Windows: SDL2 ships cmake config; LVGL is found manually
     find_package(SDL2 REQUIRED CONFIG)
 
-    # Find SDL2 include dir containing SDL2/SDL.h (for #include <SDL2/SDL.h>)
     find_path(SDL2_PARENT_INCLUDE_DIR SDL2/SDL.h
         HINTS ${CMAKE_PREFIX_PATH}
         PATH_SUFFIXES include)
@@ -16,22 +17,20 @@ if(WIN32)
         message(FATAL_ERROR "Could not find SDL2/SDL.h — set CMAKE_PREFIX_PATH to SDL2 install")
     endif()
 
-    # LVGL installed to CMAKE_PREFIX_PATH — find headers and static lib
     find_path(LVGL_INCLUDE_DIR lvgl/lvgl.h HINTS ${CMAKE_PREFIX_PATH}/include)
     find_library(LVGL_LIBRARY NAMES lvgl HINTS ${CMAKE_PREFIX_PATH}/lib)
     if(NOT LVGL_INCLUDE_DIR OR NOT LVGL_LIBRARY)
         message(FATAL_ERROR "LVGL not found. Set CMAKE_PREFIX_PATH to the LVGL install directory.")
     endif()
 else()
-    # Linux/macOS: use pkg-config
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(SDL2 REQUIRED sdl2)
     pkg_check_modules(LVGL REQUIRED lvgl)
 endif()
 
-# ── Game source files (shared with ESP32 build) ──
-set(GAME_DIR ${CMAKE_SOURCE_DIR}/../components/game_2048)
-set(FONT_DIR ${CMAKE_SOURCE_DIR}/../fonts)
+# ── Source files ──
+set(GAME_DIR ${REPO_ROOT}/components/game_2048)
+set(FONT_DIR ${REPO_ROOT}/fonts)
 
 set(GAME_SOURCES
     ${GAME_DIR}/game_logic.c
@@ -48,7 +47,8 @@ set(GAME_SOURCES
 
 # ── Desktop simulator executable ──
 add_executable(game_2048_desktop
-    main.c
+    board_init.c
+    ${REPO_ROOT}/main/game_main.c
     ${GAME_SOURCES}
 )
 
@@ -60,6 +60,7 @@ target_compile_definitions(game_2048_desktop PRIVATE
 if(WIN32)
     target_include_directories(game_2048_desktop PRIVATE
         ${CMAKE_SOURCE_DIR}
+        ${REPO_ROOT}/components/board_common
         ${GAME_DIR}/include
         ${SDL2_PARENT_INCLUDE_DIR}
         ${LVGL_INCLUDE_DIR}
@@ -73,6 +74,7 @@ if(WIN32)
 else()
     target_include_directories(game_2048_desktop PRIVATE
         ${CMAKE_SOURCE_DIR}
+        ${REPO_ROOT}/components/board_common
         ${GAME_DIR}/include
         ${SDL2_INCLUDE_DIRS}
         ${LVGL_INCLUDE_DIRS}
