@@ -146,18 +146,23 @@ static void lvgl_port_setup(lv_display_t **disp_out, lv_indev_t **touch_out)
     lvgl_port_display_cfg_t disp_cfg = {
         .io_handle = io_handle,
         .panel_handle = panel_handle,
+#if BOARD_DISPLAY_DIRECT_MODE
+        /* Direct mode: full-screen SPIRAM buffer for RASET workaround */
         .buffer_size = BOARD_LCD_H_RES * BOARD_LCD_V_RES,
+#else
+        /* Partial updates: small internal SRAM buffer (40 lines) for fast DMA */
+        .buffer_size = BOARD_LCD_H_RES * 40,
+#endif
         .trans_size = 0,
         .hres = BOARD_LCD_H_RES,
         .vres = BOARD_LCD_V_RES,
         .color_format = LV_COLOR_FORMAT_RGB565,
         .flags = {
-            .buff_spiram = true,
 #if BOARD_DISPLAY_DIRECT_MODE
+            .buff_spiram = true,
             .direct_mode = true,
 #else
             .swap_bytes = true,
-            .full_refresh = true,
 #endif
         },
     };
