@@ -49,7 +49,7 @@ void board_display_st7796_init(esp_lcd_panel_io_handle_t *io_handle,
 
     ESP_ERROR_CHECK(esp_lcd_panel_reset(*panel_handle));
     ESP_ERROR_CHECK(esp_lcd_panel_init(*panel_handle));
-    ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(*panel_handle, false));
+    ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(*panel_handle, true));
 }
 
 #endif /* BOARD_DISPLAY_DRIVER == DISPLAY_ST7796 */

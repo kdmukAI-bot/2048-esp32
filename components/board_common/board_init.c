@@ -152,9 +152,12 @@ static void lvgl_port_setup(lv_display_t **disp_out, lv_indev_t **touch_out)
         .vres = BOARD_LCD_V_RES,
         .color_format = LV_COLOR_FORMAT_RGB565,
         .flags = {
-#if BOARD_DISPLAY_DIRECT_MODE
             .buff_spiram = true,
+#if BOARD_DISPLAY_DIRECT_MODE
             .direct_mode = true,
+#else
+            .swap_bytes = true,
+            .full_refresh = true,
 #endif
         },
     };
@@ -209,12 +212,18 @@ int board_init(lv_display_t **disp, lv_indev_t **touch_indev)
 #endif
 
     /* Step 5: Touch */
+#ifndef BOARD_TOUCH_X_MAX
+#define BOARD_TOUCH_X_MAX BOARD_LCD_H_RES
+#endif
+#ifndef BOARD_TOUCH_Y_MAX
+#define BOARD_TOUCH_Y_MAX BOARD_LCD_V_RES
+#endif
 #if BOARD_TOUCH_DRIVER == TOUCH_AXS15231B
-    touch_handle = board_touch_axs15231b_init(i2c_bus, BOARD_LCD_H_RES, BOARD_LCD_V_RES);
+    touch_handle = board_touch_axs15231b_init(i2c_bus, BOARD_TOUCH_X_MAX, BOARD_TOUCH_Y_MAX);
 #elif BOARD_TOUCH_DRIVER == TOUCH_FT6336
-    touch_handle = board_touch_ft6336_init(i2c_bus, BOARD_LCD_H_RES, BOARD_LCD_V_RES);
+    touch_handle = board_touch_ft6336_init(i2c_bus, BOARD_TOUCH_X_MAX, BOARD_TOUCH_Y_MAX);
 #elif BOARD_TOUCH_DRIVER == TOUCH_CST816D
-    touch_handle = board_touch_cst816d_init(i2c_bus, BOARD_LCD_H_RES, BOARD_LCD_V_RES);
+    touch_handle = board_touch_cst816d_init(i2c_bus, BOARD_TOUCH_X_MAX, BOARD_TOUCH_Y_MAX);
 #endif
 
     /* Step 6: Backlight */

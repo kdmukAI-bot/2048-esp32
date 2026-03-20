@@ -49,8 +49,10 @@ void board_display_st7789_init(esp_lcd_panel_io_handle_t *io_handle,
 
     ESP_ERROR_CHECK(esp_lcd_panel_reset(*panel_handle));
     ESP_ERROR_CHECK(esp_lcd_panel_init(*panel_handle));
+    ESP_ERROR_CHECK(esp_lcd_panel_mirror(*panel_handle, false, false));
+    ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(*panel_handle, false));
     ESP_ERROR_CHECK(esp_lcd_panel_invert_color(*panel_handle, true));
-    ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(*panel_handle, false));
+    ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(*panel_handle, true));
 }
 
 #endif /* BOARD_DISPLAY_DRIVER == DISPLAY_ST7789 */

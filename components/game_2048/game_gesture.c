@@ -1,41 +1,72 @@
 #include "game_gesture.h"
 #include "game_ui.h"
 
-#ifndef DESKTOP_BUILD
-#include "esp_log.h"
-#else
-#include <stdio.h>
-#define ESP_LOGD(tag, fmt, ...) /* no-op on desktop */
-#endif
-
-static const char *TAG = "game_gesture";
+#include <stdlib.h>
 
 /* Declared in game_ui.c — the gesture module calls back into UI */
 extern void game_on_swipe(direction_t dir);
 
-static void gesture_event_cb(lv_event_t *e)
+/* ── Custom gesture detection ──
+ *
+ * LVGL's built-in gesture recognition requires seeing pointer movement
+ * across multiple polling cycles while pressed. Touch controllers with
+ * low report rates (like CST816D ~25-60Hz) complete fast swipes in 1-2
+ * samples, so LVGL never enters gesture mode.
+ *
+ * Instead, we track raw press/release coordinates and detect swipes
+ * from the total displacement. This catches fast swipes reliably.
+ */
+
+/* Minimum displacement (px) to count as a swipe, not a tap */
+#define SWIPE_MIN_PX  15
+
+static bool touch_was_pressed = false;
+static int32_t press_x, press_y;
+static lv_indev_t *tracked_indev = NULL;
+
+static void check_swipe(int32_t dx, int32_t dy)
 {
-    lv_dir_t gesture_dir = lv_indev_get_gesture_dir(lv_indev_active());
+    int32_t adx = abs(dx);
+    int32_t ady = abs(dy);
+
+    if (adx < SWIPE_MIN_PX && ady < SWIPE_MIN_PX) return;
 
     direction_t dir;
-    switch (gesture_dir) {
-    case LV_DIR_LEFT:  dir = DIR_LEFT;  break;
-    case LV_DIR_RIGHT: dir = DIR_RIGHT; break;
-    case LV_DIR_TOP:   dir = DIR_UP;    break;
-    case LV_DIR_BOTTOM:dir = DIR_DOWN;  break;
-    default:
-        return; /* Ignore diagonal or none */
+    if (adx > ady) {
+        dir = (dx > 0) ? DIR_RIGHT : DIR_LEFT;
+    } else {
+        dir = (dy > 0) ? DIR_DOWN : DIR_UP;
     }
 
-    ESP_LOGD(TAG, "Swipe: %d", dir);
     game_on_swipe(dir);
+}
+
+static void touch_poll_cb(lv_timer_t *timer)
+{
+    if (!tracked_indev) return;
+
+    lv_point_t p;
+    lv_indev_get_point(tracked_indev, &p);
+    lv_indev_state_t state = lv_indev_get_state(tracked_indev);
+
+    if (state == LV_INDEV_STATE_PRESSED) {
+        if (!touch_was_pressed) {
+            press_x = p.x;
+            press_y = p.y;
+            touch_was_pressed = true;
+        }
+    } else {
+        if (touch_was_pressed) {
+            check_swipe(p.x - press_x, p.y - press_y);
+            touch_was_pressed = false;
+        }
+    }
 }
 
 void game_gesture_init(lv_obj_t *board, lv_indev_t *touch_indev)
 {
-    (void)touch_indev;
+    tracked_indev = touch_indev;
 
-    /* Make the board capture gestures from the full screen for better UX */
-    lv_obj_t *scr = lv_scr_act();
-    lv_obj_add_event_cb(scr, gesture_event_cb, LV_EVENT_GESTURE, NULL);
+    /* Poll raw touch data — custom gesture detection bypasses LVGL gestures */
+    lv_timer_create(touch_poll_cb, 10, NULL);
 }
