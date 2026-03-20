@@ -1,5 +1,6 @@
 #include "game_gesture.h"
 #include "game_ui.h"
+#include "game_screensaver.h"
 
 #include <stdlib.h>
 
@@ -54,10 +55,20 @@ static void touch_poll_cb(lv_timer_t *timer)
             press_x = p.x;
             press_y = p.y;
             touch_was_pressed = true;
+
+            /* Any touch resets idle timer / wakes screensaver */
+            if (game_screensaver_is_active()) {
+                game_screensaver_stop();
+            } else {
+                game_screensaver_reset_idle();
+            }
         }
     } else {
         if (touch_was_pressed) {
-            check_swipe(p.x - press_x, p.y - press_y);
+            /* Only process swipes when screensaver is not active */
+            if (!game_screensaver_is_active()) {
+                check_swipe(p.x - press_x, p.y - press_y);
+            }
             touch_was_pressed = false;
         }
     }

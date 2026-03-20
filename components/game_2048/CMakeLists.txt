@@ -1,5 +1,5 @@
 idf_component_register(
-    SRCS "game_logic.c" "game_ui.c" "game_gesture.c"
+    SRCS "game_logic.c" "game_ui.c" "game_gesture.c" "game_screensaver.c"
          "../../fonts/font_clear_sans_bold_20.c"
          "../../fonts/font_clear_sans_bold_24.c"
          "../../fonts/font_clear_sans_bold_28.c"
