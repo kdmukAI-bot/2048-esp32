@@ -30,5 +30,7 @@ CONFIG_PARTITION_TABLE_FILENAME="partitions.csv"
 # Task watchdog — 10s timeout (default 5s can trip during display flush)
 CONFIG_ESP_TASK_WDT_TIMEOUT_S=10
 
+
 # Disable error string lookup to save flash
 CONFIG_ESP_ERR_TO_NAME_LOOKUP=n
+

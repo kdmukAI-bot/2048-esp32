@@ -5,6 +5,10 @@
  * Each wall bounce doubles the tile value and changes its color
  * through the 2048 palette (2→4→8→...→2048→2).
  *
+ * Implementation: hides all game objects and creates the bouncing tile
+ * on the same screen. Avoids lv_screen_load() which corrupts the heap
+ * in LVGL v9.5.0 on ESP32.
+ *
  * Any touch dismisses the screensaver.
  * Activates after SCREENSAVER_IDLE_MS of no touch input.
  */
@@ -18,7 +22,6 @@
 #ifndef DESKTOP_BUILD
 #include "esp_log.h"
 #else
-#include <stdio.h>
 #define ESP_LOGI(tag, fmt, ...) printf("[%s] " fmt "\n", tag, ##__VA_ARGS__)
 #endif
 
@@ -32,7 +35,7 @@ static const char *TAG = "screensaver";
 #define SPEED_MIN               2       /* Minimum pixels per tick */
 #define SPEED_MAX               5       /* Maximum pixels per tick */
 
-/* ── 2048 color palette (duplicated from game_ui.c for encapsulation) ── */
+/* ── 2048 color palette ── */
 static lv_color_t color_hex(uint32_t hex)
 {
     return lv_color_make((hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF);
@@ -66,7 +69,6 @@ static tile_colors_t colors_for_value(int value)
     return c;
 }
 
-/* Font selection based on tile value digit count */
 LV_FONT_DECLARE(font_clear_sans_bold_20);
 LV_FONT_DECLARE(font_clear_sans_bold_24);
 LV_FONT_DECLARE(font_clear_sans_bold_28);
@@ -80,16 +82,19 @@ static const lv_font_t *font_for_value(int value)
 
 /* ── State ── */
 static bool active = false;
-static lv_obj_t *scr_obj = NULL;       /* Full-screen background */
-static lv_obj_t *tile_obj = NULL;      /* The bouncing tile */
-static lv_obj_t *tile_label = NULL;    /* Number on the tile */
+static lv_obj_t *tile_obj = NULL;
+static lv_obj_t *tile_label = NULL;
 static lv_timer_t *anim_timer = NULL;
 static lv_timer_t *idle_timer = NULL;
 
-static int tile_x, tile_y;             /* Current position */
-static int dx, dy;                     /* Velocity */
-static int tile_value;                 /* Current tile value (2-2048) */
-static int screen_w, screen_h;         /* Display dimensions */
+static lv_color_t saved_bg_color;
+
+static int tile_x, tile_y;
+static int dx, dy;
+static int tile_value;
+static int screen_w, screen_h;
+
+static char tile_text_buf[8];
 
 static void update_tile_appearance(void)
 {
@@ -98,9 +103,8 @@ static void update_tile_appearance(void)
     lv_obj_set_style_text_color(tile_label, c.fg, 0);
     lv_obj_set_style_text_font(tile_label, font_for_value(tile_value), 0);
 
-    char buf[8];
-    snprintf(buf, sizeof(buf), "%d", tile_value);
-    lv_label_set_text(tile_label, buf);
+    snprintf(tile_text_buf, sizeof(tile_text_buf), "%d", tile_value);
+    lv_label_set_text_static(tile_label, tile_text_buf);
     lv_obj_center(tile_label);
 }
 
@@ -164,6 +168,22 @@ static void idle_timeout_cb(lv_timer_t *timer)
     }
 }
 
+/* Hide/show all children of the screen except the bouncing tile */
+static void set_game_objects_hidden(bool hidden)
+{
+    lv_obj_t *scr = lv_scr_act();
+    uint32_t count = lv_obj_get_child_count(scr);
+    for (uint32_t i = 0; i < count; i++) {
+        lv_obj_t *child = lv_obj_get_child(scr, i);
+        if (child == tile_obj) continue;
+        if (hidden) {
+            lv_obj_add_flag(child, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_clear_flag(child, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
+
 /* ── Public API ── */
 
 void game_screensaver_init(void)
@@ -172,25 +192,15 @@ void game_screensaver_init(void)
     screen_w = lv_display_get_horizontal_resolution(disp);
     screen_h = lv_display_get_vertical_resolution(disp);
 
-    /* Create screensaver screen objects (hidden initially) */
-    scr_obj = lv_obj_create(lv_scr_act());
-    lv_obj_set_size(scr_obj, screen_w, screen_h);
-    lv_obj_set_pos(scr_obj, 0, 0);
-    lv_obj_set_style_bg_color(scr_obj, lv_color_black(), 0);
-    lv_obj_set_style_border_width(scr_obj, 0, 0);
-    lv_obj_set_style_radius(scr_obj, 0, 0);
-    lv_obj_set_style_pad_all(scr_obj, 0, 0);
-    lv_obj_set_style_clip_corner(scr_obj, true, 0);
-    lv_obj_clear_flag(scr_obj, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_flag(scr_obj, LV_OBJ_FLAG_HIDDEN);
-
-    /* The bouncing tile */
-    tile_obj = lv_obj_create(scr_obj);
+    /* Bouncing tile — created on the game screen, hidden until needed */
+    lv_obj_t *scr = lv_scr_act();
+    tile_obj = lv_obj_create(scr);
     lv_obj_set_size(tile_obj, TILE_SIZE, TILE_SIZE);
     lv_obj_set_style_radius(tile_obj, TILE_RADIUS, 0);
     lv_obj_set_style_border_width(tile_obj, 0, 0);
     lv_obj_set_style_pad_all(tile_obj, 0, 0);
     lv_obj_clear_flag(tile_obj, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(tile_obj, LV_OBJ_FLAG_HIDDEN);
 
     tile_label = lv_label_create(tile_obj);
     lv_obj_center(tile_label);
@@ -199,8 +209,10 @@ void game_screensaver_init(void)
     anim_timer = lv_timer_create(anim_tick_cb, ANIM_TICK_MS, NULL);
     lv_timer_pause(anim_timer);
 
-    /* Idle timer — fires once after timeout */
+    /* Idle timer — fires once after timeout, then pauses (do NOT auto-delete,
+     * since we reuse the timer handle via game_screensaver_reset_idle). */
     idle_timer = lv_timer_create(idle_timeout_cb, SCREENSAVER_IDLE_MS, NULL);
+    lv_timer_set_auto_delete(idle_timer, false);
     lv_timer_set_repeat_count(idle_timer, 1);
 
     ESP_LOGI(TAG, "Screensaver initialized (idle timeout: %d ms)", SCREENSAVER_IDLE_MS);
@@ -211,24 +223,26 @@ void game_screensaver_start(void)
     if (active) return;
     active = true;
 
-    /* Seed RNG from LVGL tick for variety between runs */
     srand(lv_tick_get());
 
-    /* Reset tile state with random initial direction */
     tile_value = 2;
     tile_x = screen_w / 4 + (rand() % (screen_w / 2));
     tile_y = screen_h / 4 + (rand() % (screen_h / 2));
     dx = (rand() & 1) ? random_speed() : -random_speed();
     dy = (rand() & 1) ? random_speed() : -random_speed();
 
+    /* Hide game objects, change background to black */
+    lv_obj_t *scr = lv_scr_act();
+    saved_bg_color = lv_obj_get_style_bg_color(scr, 0);
+    lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
+    set_game_objects_hidden(true);
+
+    /* Show and position the bouncing tile */
     update_tile_appearance();
     lv_obj_set_pos(tile_obj, tile_x, tile_y);
+    lv_obj_clear_flag(tile_obj, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(tile_obj);
 
-    /* Show screensaver overlay */
-    lv_obj_clear_flag(scr_obj, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_move_foreground(scr_obj);
-
-    /* Start animation */
     lv_timer_resume(anim_timer);
 
     ESP_LOGI(TAG, "Screensaver started");
@@ -239,11 +253,16 @@ void game_screensaver_stop(void)
     if (!active) return;
     active = false;
 
-    /* Hide and pause */
-    lv_obj_add_flag(scr_obj, LV_OBJ_FLAG_HIDDEN);
     lv_timer_pause(anim_timer);
 
-    /* Restart idle timer */
+    lv_timer_pause(anim_timer);
+
+    /* Hide bouncing tile, restore game objects */
+    lv_obj_add_flag(tile_obj, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_t *scr = lv_scr_act();
+    lv_obj_set_style_bg_color(scr, saved_bg_color, 0);
+    set_game_objects_hidden(false);
+
     game_screensaver_reset_idle();
 
     ESP_LOGI(TAG, "Screensaver stopped");

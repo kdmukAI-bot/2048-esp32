@@ -22,6 +22,7 @@ extern void game_on_swipe(direction_t dir);
 #define SWIPE_MIN_PX  15
 
 static bool touch_was_pressed = false;
+static bool wake_touch = false;  /* true = this touch cycle woke the screensaver */
 static int32_t press_x, press_y;
 static lv_indev_t *tracked_indev = NULL;
 
@@ -59,17 +60,19 @@ static void touch_poll_cb(lv_timer_t *timer)
             /* Any touch resets idle timer / wakes screensaver */
             if (game_screensaver_is_active()) {
                 game_screensaver_stop();
+                wake_touch = true;  /* consume this entire touch cycle */
             } else {
                 game_screensaver_reset_idle();
+                wake_touch = false;
             }
         }
     } else {
         if (touch_was_pressed) {
-            /* Only process swipes when screensaver is not active */
-            if (!game_screensaver_is_active()) {
+            if (!wake_touch) {
                 check_swipe(p.x - press_x, p.y - press_y);
             }
             touch_was_pressed = false;
+            wake_touch = false;
         }
     }
 }
