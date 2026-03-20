@@ -1,6 +1,7 @@
 #include "game_ui.h"
 #include "game_logic.h"
 #include "game_gesture.h"
+#include "game_screensaver.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -568,6 +569,9 @@ void game_ui_init(lv_indev_t *touch_indev)
 
     /* ── Gesture detection ── */
     game_gesture_init(board_obj, touch_indev);
+
+    /* ── Screensaver ── */
+    game_screensaver_init();
 
     /* Initial render */
     game_ui_update();

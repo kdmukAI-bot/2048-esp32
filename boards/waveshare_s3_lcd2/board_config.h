@@ -54,7 +54,7 @@
 
 /* ── LVGL port tuning ── */
 #define BOARD_LVGL_TASK_PRIORITY    5
-#define BOARD_LVGL_TASK_STACK       (1024 * 8)
+#define BOARD_LVGL_TASK_STACK       (1024 * 12)
 #define BOARD_LVGL_TASK_AFFINITY    1
 #define BOARD_LVGL_MAX_SLEEP_MS     500
 #define BOARD_LVGL_TIMER_PERIOD_MS  5

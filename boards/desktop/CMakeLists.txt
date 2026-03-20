@@ -36,6 +36,7 @@ set(GAME_SOURCES
     ${GAME_DIR}/game_logic.c
     ${GAME_DIR}/game_ui.c
     ${GAME_DIR}/game_gesture.c
+    ${GAME_DIR}/game_screensaver.c
     ${FONT_DIR}/font_clear_sans_bold_20.c
     ${FONT_DIR}/font_clear_sans_bold_24.c
     ${FONT_DIR}/font_clear_sans_bold_28.c
