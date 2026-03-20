@@ -23,6 +23,15 @@ jobs:
   build:
     needs: resolve-image-owner
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - board: waveshare_s3_lcd35b
+            target: esp32s3
+          - board: waveshare_s3_lcd35
+            target: esp32s3
+          - board: waveshare_s3_lcd2
+            target: esp32s3
     defaults:
       run:
         shell: bash
@@ -46,19 +55,21 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /root/.cache/ccache
-          key: ccache-esp32s3-${{ hashFiles('main/**', 'components/**') }}
+          key: ccache-${{ matrix.board }}-${{ hashFiles('main/**', 'components/**', 'boards/**') }}
           restore-keys: |
-            ccache-esp32s3-
+            ccache-${{ matrix.board }}-
 
       - name: Build firmware
         run: |
           source "$IDF_PATH/export.sh"
-          idf.py set-target esp32s3
-          idf.py build -DCCACHE_ENABLE=1 2>&1 | tee build-log.txt
+          idf.py set-target ${{ matrix.target }}
+          idf.py build -DBOARD=${{ matrix.board }} -DCCACHE_ENABLE=1 2>&1 | tee build-log.txt
 
       - name: Record build provenance
         run: |
           {
+            echo "board=${{ matrix.board }}"
+            echo "target=${{ matrix.target }}"
             echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "git_ref=${{ github.ref }}"
             echo "git_sha=${{ github.sha }}"
@@ -81,7 +92,7 @@ jobs:
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-2048-esp32s3
+          name: firmware-2048-${{ matrix.board }}
           path: out/
 
   desktop-linux:
@@ -101,7 +112,7 @@ jobs:
           cd /tmp/lvgl
           # Remove ARM assembly files (not valid on x86)
           find src -name '*.S' -delete
-          cp ${{ github.workspace }}/desktop/lv_conf.h .
+          cp ${{ github.workspace }}/boards/desktop/lv_conf.h .
           mkdir build && cd build
           cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local \
                    -DLV_BUILD_CONF_DIR=/tmp/lvgl \
@@ -114,14 +125,14 @@ jobs:
 
       - name: Build desktop simulator
         run: |
-          cmake -S desktop -B desktop/build
-          cmake --build desktop/build
+          cmake -S boards/desktop -B boards/desktop/build
+          cmake --build boards/desktop/build
 
       - name: Upload desktop binary
         uses: actions/upload-artifact@v4
         with:
           name: desktop-linux
-          path: desktop/build/game_2048_desktop
+          path: boards/desktop/build/game_2048_desktop
 
   desktop-macos:
     runs-on: macos-latest
@@ -138,7 +149,7 @@ jobs:
           git clone --depth 1 --branch release/v9.5 https://github.com/lvgl/lvgl.git /tmp/lvgl
           cd /tmp/lvgl
           find src -name '*.S' -delete
-          cp ${{ github.workspace }}/desktop/lv_conf.h .
+          cp ${{ github.workspace }}/boards/desktop/lv_conf.h .
           mkdir build && cd build
           cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local \
                    -DLV_BUILD_CONF_DIR=/tmp/lvgl \
@@ -151,14 +162,14 @@ jobs:
       - name: Build desktop simulator
         run: |
           export PKG_CONFIG_PATH="/usr/local/share/pkgconfig:$PKG_CONFIG_PATH"
-          cmake -S desktop -B desktop/build
-          cmake --build desktop/build
+          cmake -S boards/desktop -B boards/desktop/build
+          cmake --build boards/desktop/build
 
       - name: Upload desktop binary
         uses: actions/upload-artifact@v4
         with:
           name: desktop-macos
-          path: desktop/build/game_2048_desktop
+          path: boards/desktop/build/game_2048_desktop
 
   desktop-windows:
     runs-on: windows-latest
@@ -184,7 +195,7 @@ jobs:
           git clone --depth 1 --branch release/v9.5 https://github.com/lvgl/lvgl.git /tmp/lvgl
           cd /tmp/lvgl
           find src -name '*.S' -delete
-          cp "$GITHUB_WORKSPACE/desktop/lv_conf.h" .
+          cp "$GITHUB_WORKSPACE/boards/desktop/lv_conf.h" .
           mkdir build && cd build
           cmake .. -DCMAKE_INSTALL_PREFIX=C:/lvgl-install \
                    "-DLV_BUILD_CONF_DIR=$(cygpath -m /tmp/lvgl)" \
@@ -197,20 +208,20 @@ jobs:
       - name: Build desktop simulator
         shell: bash
         run: |
-          cmake -S desktop -B desktop/build \
+          cmake -S boards/desktop -B boards/desktop/build \
             -DCMAKE_PREFIX_PATH="C:/SDL2/SDL2-2.32.10;C:/lvgl-install"
-          cmake --build desktop/build --config Release
+          cmake --build boards/desktop/build --config Release
 
       - name: Collect Windows binary
         shell: bash
         run: |
-          cp C:/SDL2/SDL2-2.32.10/lib/x64/SDL2.dll desktop/build/Release/
-          ls -la desktop/build/Release/
+          cp C:/SDL2/SDL2-2.32.10/lib/x64/SDL2.dll boards/desktop/build/Release/
+          ls -la boards/desktop/build/Release/
 
       - name: Upload desktop binary
         uses: actions/upload-artifact@v4
         with:
           name: desktop-windows
           path: |
-            desktop/build/Release/game_2048_desktop.exe
-            desktop/build/Release/SDL2.dll
+            boards/desktop/build/Release/game_2048_desktop.exe
+            boards/desktop/build/Release/SDL2.dll

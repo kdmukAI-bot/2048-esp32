@@ -17,18 +17,42 @@
 
 static const char *TAG = "game_ui";
 
-/* ── Layout constants (320x480 portrait) ── */
-#define SCREEN_W        320
-#define SCREEN_H        480
-#define BOARD_SIZE      302   /* 4×63 + 5×10 = 302 */
-#define CELL_SIZE       63
-#define CELL_GAP        10
-#define BOARD_PAD       (CELL_GAP)
-#define TOP_BAR_H       95
+/* ── Resolution-adaptive layout ── */
+typedef struct {
+    int screen_w, screen_h;
+    int board_size;
+    int cell_size;
+    int cell_gap;
+    int top_bar_h;
+    int board_radius;
+    int cell_radius;
+    int score_box_w, score_box_h;
+    int overlay_btn_w, overlay_btn_h;
+    int overlay_pad_row;
+    int title_x, title_y;
+    int score_y;
+    const lv_font_t *font_title;
+    const lv_font_t *font_tile_large;   /* 2-64 */
+    const lv_font_t *font_tile_medium;  /* 128-512 */
+    const lv_font_t *font_tile_small;   /* >=1024 */
+    const lv_font_t *font_score;
+    const lv_font_t *font_overlay_msg;
+} layout_t;
+
+static const layout_t *layout;
+
+/* Macros for backward-compatible access */
+#define SCREEN_W        (layout->screen_w)
+#define SCREEN_H        (layout->screen_h)
+#define BOARD_SIZE      (layout->board_size)
+#define CELL_SIZE       (layout->cell_size)
+#define CELL_GAP        (layout->cell_gap)
+#define BOARD_PAD       (layout->cell_gap)
+#define TOP_BAR_H       (layout->top_bar_h)
 #define BOARD_X         ((SCREEN_W - BOARD_SIZE) / 2)
 #define BOARD_Y         (TOP_BAR_H + 10)
-#define BOARD_RADIUS    10
-#define CELL_RADIUS     6
+#define BOARD_RADIUS    (layout->board_radius)
+#define CELL_RADIUS     (layout->cell_radius)
 
 /* ── Classic 2048 color palette ── */
 typedef struct {
@@ -74,11 +98,62 @@ LV_FONT_DECLARE(font_clear_sans_bold_40);
 LV_FONT_DECLARE(font_clear_sans_bold_50);
 LV_FONT_DECLARE(font_clear_sans_regular_14);
 
+/* ── Layout tables (hand-tuned per resolution) ── */
+static const layout_t layout_320x480 = {
+    .screen_w = 320, .screen_h = 480,
+    .board_size = 302,  /* 4×63 + 5×10 */
+    .cell_size = 63, .cell_gap = 10,
+    .top_bar_h = 60,
+    .board_radius = 10, .cell_radius = 6,
+    .score_box_w = 72, .score_box_h = 38,
+    .overlay_btn_w = 120, .overlay_btn_h = 36,
+    .overlay_pad_row = 12,
+    .title_x = 10, .title_y = 16,
+    .score_y = 14,
+    .font_title = &font_clear_sans_bold_50,
+    .font_tile_large = &font_clear_sans_bold_28,
+    .font_tile_medium = &font_clear_sans_bold_24,
+    .font_tile_small = &font_clear_sans_bold_20,
+    .font_score = &font_clear_sans_regular_14,
+    .font_overlay_msg = &font_clear_sans_bold_30,
+};
+
+static const layout_t layout_240x320 = {
+    .screen_w = 240, .screen_h = 320,
+    .board_size = 220,  /* 4×45 + 5×8 */
+    .cell_size = 45, .cell_gap = 8,
+    .top_bar_h = 48,
+    .board_radius = 8, .cell_radius = 4,
+    .score_box_w = 54, .score_box_h = 32,
+    .overlay_btn_w = 100, .overlay_btn_h = 30,
+    .overlay_pad_row = 8,
+    .title_x = 6, .title_y = 8,
+    .score_y = 8,
+    .font_title = &font_clear_sans_bold_40,
+    .font_tile_large = &font_clear_sans_bold_20,
+    .font_tile_medium = &font_clear_sans_bold_20,
+    .font_tile_small = &font_clear_sans_regular_14,
+    .font_score = &font_clear_sans_regular_14,
+    .font_overlay_msg = &font_clear_sans_bold_24,
+};
+
+static void select_layout(int h_res, int v_res)
+{
+    if (h_res <= 240 && v_res <= 320) {
+        layout = &layout_240x320;
+    } else {
+        layout = &layout_320x480;
+    }
+    ESP_LOGI(TAG, "Layout: %dx%d, board=%d, cell=%d",
+             layout->screen_w, layout->screen_h,
+             layout->board_size, layout->cell_size);
+}
+
 static const lv_font_t *font_for_value(int value)
 {
-    if (value >= 1024) return &font_clear_sans_bold_20;
-    if (value >= 128)  return &font_clear_sans_bold_24;
-    return &font_clear_sans_bold_28;
+    if (value >= 1024) return layout->font_tile_small;
+    if (value >= 128)  return layout->font_tile_medium;
+    return layout->font_tile_large;
 }
 
 /* ── Global state ── */
@@ -119,7 +194,6 @@ static void save_best_score(void) { /* no-op on desktop */ }
 #endif
 
 /* ── Forward declarations ── */
-static void new_game_cb(lv_event_t *e);
 static void remove_overlay(void);
 static void show_overlay(const char *message, bool show_keep_playing);
 static void update_cell_content(int r, int c);
@@ -139,6 +213,7 @@ static int anim_pending = 0;
 #define MAX_SLIDE_FILLS (GRID_SIZE * GRID_SIZE)
 static lv_obj_t *slide_fills[MAX_SLIDE_FILLS];
 static int slide_fill_count = 0;
+
 
 static int cell_x(int c) { return CELL_GAP + c * (CELL_SIZE + CELL_GAP); }
 static int cell_y(int r) { return CELL_GAP + r * (CELL_SIZE + CELL_GAP); }
@@ -342,14 +417,14 @@ static void remove_overlay(void)
 static lv_obj_t *create_overlay_btn(lv_obj_t *parent, const char *text, lv_event_cb_t cb)
 {
     lv_obj_t *btn = lv_button_create(parent);
-    lv_obj_set_size(btn, 120, 36);
+    lv_obj_set_size(btn, layout->overlay_btn_w, layout->overlay_btn_h);
     lv_obj_set_style_bg_color(btn, color_hex(0x8f7a66), 0);
     lv_obj_set_style_radius(btn, 4, 0);
 
     lv_obj_t *lbl = lv_label_create(btn);
     lv_label_set_text(lbl, text);
     lv_obj_set_style_text_color(lbl, color_hex(0xf9f6f2), 0);
-    lv_obj_set_style_text_font(lbl, &font_clear_sans_regular_14, 0);
+    lv_obj_set_style_text_font(lbl, layout->font_score, 0);
     lv_obj_center(lbl);
 
     lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, NULL);
@@ -374,27 +449,17 @@ static void show_overlay(const char *message, bool show_keep_playing)
     lv_obj_clear_flag(overlay_obj, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_flex_flow(overlay_obj, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(overlay_obj, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_row(overlay_obj, 12, 0);
+    lv_obj_set_style_pad_row(overlay_obj, layout->overlay_pad_row, 0);
 
     lv_obj_t *msg_label = lv_label_create(overlay_obj);
     lv_label_set_text(msg_label, message);
-    lv_obj_set_style_text_font(msg_label, &font_clear_sans_bold_30, 0);
+    lv_obj_set_style_text_font(msg_label, layout->font_overlay_msg, 0);
     lv_obj_set_style_text_color(msg_label, color_hex(0x776e65), 0);
 
     if (show_keep_playing) {
         create_overlay_btn(overlay_obj, "Keep Playing", keep_playing_cb);
     }
     create_overlay_btn(overlay_obj, "Try Again", try_again_overlay_cb);
-}
-
-/* ── New Game button callback ── */
-static void new_game_cb(lv_event_t *e)
-{
-    (void)e;
-    remove_overlay();
-    game_reset(&game);
-    memset(prev_grid, 0, sizeof(prev_grid));
-    game_ui_update();
 }
 
 /* ── Score box helper ── */
@@ -411,13 +476,13 @@ static lv_obj_t *create_score_box(lv_obj_t *parent, const char *title, lv_obj_t 
     lv_obj_t *title_lbl = lv_label_create(box);
     lv_label_set_text(title_lbl, title);
     lv_obj_set_style_text_color(title_lbl, color_hex(0xeee4da), 0);
-    lv_obj_set_style_text_font(title_lbl, &font_clear_sans_regular_14, 0);
+    lv_obj_set_style_text_font(title_lbl, layout->font_score, 0);
     lv_obj_align(title_lbl, LV_ALIGN_TOP_MID, 0, 0);
 
     *value_label = lv_label_create(box);
     lv_label_set_text(*value_label, "0");
     lv_obj_set_style_text_color(*value_label, lv_color_white(), 0);
-    lv_obj_set_style_text_font(*value_label, &font_clear_sans_regular_14, 0);
+    lv_obj_set_style_text_font(*value_label, layout->font_score, 0);
     lv_obj_align(*value_label, LV_ALIGN_BOTTOM_MID, 0, 0);
 
     return box;
@@ -435,6 +500,11 @@ void game_ui_init(lv_indev_t *touch_indev)
     }
 #endif
 
+    /* Select layout based on display resolution */
+    lv_display_t *disp = lv_display_get_default();
+    select_layout(lv_display_get_horizontal_resolution(disp),
+                  lv_display_get_vertical_resolution(disp));
+
     /* Initialize game state */
     game_init(&game);
     load_best_score();
@@ -445,39 +515,23 @@ void game_ui_init(lv_indev_t *touch_indev)
     lv_obj_set_style_bg_color(scr, color_hex(0xfaf8ef), 0);
     lv_obj_clear_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
 
-    /* ── Top bar (matches original 2048 app layout) ── */
-    /* "2048" title on the left, score boxes to the right */
-    int score_box_w = 72;
-    int score_box_h = 38;
+    /* ── Top bar ── */
+    int score_box_w = layout->score_box_w;
+    int score_box_h = layout->score_box_h;
 
     lv_obj_t *title = lv_label_create(scr);
     lv_label_set_text(title, "2048");
-    lv_obj_set_style_text_font(title, &font_clear_sans_bold_50, 0);
+    lv_obj_set_style_text_font(title, layout->font_title, 0);
     lv_obj_set_style_text_color(title, color_hex(0x776e65), 0);
-    lv_obj_set_pos(title, 10, 16);
+    lv_obj_set_pos(title, layout->title_x, layout->title_y);
 
     lv_obj_t *score_box = create_score_box(scr, "SCORE", &score_value_label);
     lv_obj_set_size(score_box, score_box_w, score_box_h);
-    lv_obj_set_pos(score_box, SCREEN_W - score_box_w * 2 - 6 - 10, 14);
+    lv_obj_set_pos(score_box, SCREEN_W - score_box_w * 2 - 6 - 10, layout->score_y);
 
     lv_obj_t *best_box = create_score_box(scr, "BEST", &best_value_label);
     lv_obj_set_size(best_box, score_box_w, score_box_h);
-    lv_obj_set_pos(best_box, SCREEN_W - score_box_w - 10, 14);
-
-    /* Refresh (new game) icon button — right-aligned below scores */
-    int btn_size = 36;
-    lv_obj_t *new_btn = lv_button_create(scr);
-    lv_obj_set_size(new_btn, btn_size, btn_size);
-    lv_obj_set_pos(new_btn, SCREEN_W - btn_size - 10, 56);
-    lv_obj_set_style_bg_color(new_btn, color_hex(0xbbada0), 0);
-    lv_obj_set_style_radius(new_btn, BOARD_RADIUS, 0);
-
-    lv_obj_t *new_lbl = lv_label_create(new_btn);
-    lv_label_set_text(new_lbl, LV_SYMBOL_REFRESH);
-    lv_obj_set_style_text_color(new_lbl, lv_color_white(), 0);
-    lv_obj_set_style_text_font(new_lbl, &lv_font_montserrat_20, 0);
-    lv_obj_center(new_lbl);
-    lv_obj_add_event_cb(new_btn, new_game_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_set_pos(best_box, SCREEN_W - score_box_w - 10, layout->score_y);
 
     /* ── Board ── */
     board_obj = lv_obj_create(scr);

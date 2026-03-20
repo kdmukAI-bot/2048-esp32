@@ -1,5 +1,8 @@
 .PHONY: docker-shell docker-build docker-flash clean desktop-build desktop-run desktop-clean
 
+# Board selection — override with: make docker-build BOARD=waveshare_s3_lcd35
+BOARD ?= waveshare_s3_lcd35b
+
 # Local dev uses the same prebaked GHCR image as CI.
 # Override IMAGE if you need a pinned tag.
 IMAGE ?= ghcr.io/kdmukai-bot/2048-esp32-base:latest
@@ -26,6 +29,7 @@ docker-build:
 	docker run --rm -t \
 		$(DOCKER_USER) \
 		-e HOME=/tmp/build-home \
+		-e BOARD=$(BOARD) \
 		-v $(PWD):/workspace/2048-esp32 \
 		-v $(CACHE_DIR):/cache \
 		-w /workspace/2048-esp32 \
@@ -53,11 +57,11 @@ clean-purge-cache: clean
 
 # ── Desktop simulator (SDL2 + system LVGL) ──
 desktop-build:
-	cmake -S desktop -B desktop/build
-	cmake --build desktop/build
+	cmake -S boards/desktop -B boards/desktop/build
+	cmake --build boards/desktop/build
 
 desktop-run: desktop-build
-	desktop/build/game_2048_desktop
+	boards/desktop/build/game_2048_desktop
 
 desktop-clean:
-	rm -rf desktop/build
+	rm -rf boards/desktop/build
