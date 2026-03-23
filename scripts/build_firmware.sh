@@ -20,10 +20,10 @@ esac
 echo "=== Board: $BOARD (target: $TARGET) ==="
 
 echo "=== Setting target: $TARGET ==="
-idf.py set-target "$TARGET"
+idf.py -DBOARD="$BOARD" set-target "$TARGET"
 
 echo "=== Building firmware ==="
-idf.py build -DBOARD="$BOARD" -DCCACHE_ENABLE=1 2>&1 | tee "${ROOT_DIR}/build-log.txt"
+idf.py build -DCCACHE_ENABLE=1 2>&1 | tee "${ROOT_DIR}/build-log.txt"
 
 echo "=== Build complete ==="
 echo "Firmware: $BUILD_DIR/game_2048.bin"
