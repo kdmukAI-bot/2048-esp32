@@ -1,7 +1,8 @@
-.PHONY: docker-shell docker-build docker-flash clean desktop-build desktop-run desktop-clean
+.PHONY: docker-shell docker-build docker-flash dist clean desktop-build desktop-run desktop-clean
 
 # Board selection — override with: make docker-build BOARD=waveshare_s3_lcd35
 BOARD ?= waveshare_s3_lcd35b
+DIST_DIR = dist/$(BOARD)
 
 # Local dev uses the same prebaked GHCR image as CI.
 # Override IMAGE if you need a pinned tag.
@@ -46,6 +47,15 @@ docker-flash:
 		-v $(CACHE_DIR):/cache \
 		-w /workspace/2048-esp32 \
 		$(IMAGE) bash -c './scripts/docker_flash.sh'
+
+# Collect flashable artifacts into dist/<BOARD>/
+dist: docker-build
+	rm -rf $(DIST_DIR)
+	mkdir -p $(DIST_DIR)/bootloader $(DIST_DIR)/partition_table
+	cp build/flash_args $(DIST_DIR)/
+	cp build/game_2048.bin $(DIST_DIR)/
+	cp build/bootloader/bootloader.bin $(DIST_DIR)/bootloader/
+	cp build/partition_table/partition-table.bin $(DIST_DIR)/partition_table/
 
 # Safe clean: remove build outputs
 clean:
