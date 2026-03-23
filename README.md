@@ -1,14 +1,74 @@
-# 2048 for ESP32-S3
+# 2048 for ESP32
 
-A touchscreen implementation of the classic [2048 game](https://github.com/gabrielecirulli/2048) running on the Waveshare ESP32-S3 Touch LCD 3.5B. Pure C/C++ with LVGL v8 — no MicroPython, no Python.
+A touchscreen implementation of the classic [2048 game](https://github.com/gabrielecirulli/2048) running on Waveshare ESP32 touch display boards. Pure C/C++ with LVGL v9 — no MicroPython, no Python.
 
-## Hardware
+## Supported Boards
 
-- **Board:** [Waveshare ESP32-S3 Touch LCD 3.5B](https://www.waveshare.com/esp32-s3-touch-lcd-3.5b.htm)
-- **Display:** 480×320 AXS15231B QSPI (landscape orientation)
-- **Touch:** Capacitive via I2C
-- **PMIC:** AXP2101 (battery + power management)
-- **Memory:** 16MB Flash, 8MB PSRAM
+| Board | SoC | Display | Touch | Resolution |
+|---|---|---|---|---|
+| [Waveshare ESP32-S3 Touch LCD 3.5B](https://www.waveshare.com/esp32-s3-touch-lcd-3.5b.htm) | ESP32-S3 | AXS15231B QSPI | AXS15231B | 320x480 |
+| [Waveshare ESP32-S3 Touch LCD 3.5](https://www.waveshare.com/esp32-s3-touch-lcd-3.5.htm) | ESP32-S3 | ST7796 SPI | FT6336 | 320x480 |
+| [Waveshare ESP32-S3 Touch LCD 2](https://www.waveshare.com/esp32-s3-touch-lcd-2.htm) | ESP32-S3 | ST7789 SPI | CST816D | 240x320 |
+
+All boards: ESP32-S3, 16MB Flash, 8MB PSRAM. The 3.5" boards include an AXP2101 PMIC; the 2" board does not.
+
+Board selection is compile-time via the `BOARD` variable (default: `waveshare_s3_lcd35b`). Hardware abstraction is provided by the [esp-board-common](https://codeberg.org/kdmukAI-bot/esp-board-common) submodule.
+
+## ESP32 Firmware
+
+### Clone
+
+```bash
+git clone --recurse-submodules <repo-url>
+cd 2048-esp32
+```
+
+If you already cloned without `--recurse-submodules`:
+```bash
+git submodule update --init
+```
+
+### Docker build (recommended)
+
+No host toolchain required. Uses a pre-built GHCR base image with ESP-IDF v5.5.1.
+
+```bash
+# Build for the default board (3.5B)
+make docker-build
+
+# Build for a specific board
+make docker-build BOARD=waveshare_s3_lcd35
+
+# Build + collect flashable artifacts to dist/
+make dist BOARD=waveshare_s3_lcd35b
+
+# Interactive shell inside the build container
+make docker-shell
+
+# Flash via USB (requires device access)
+make docker-flash
+```
+
+The `dist` target collects the firmware binary, bootloader, partition table, and flash arguments into `dist/<BOARD>/`:
+
+```bash
+cd dist/waveshare_s3_lcd35b
+esptool.py --chip esp32s3 -b 460800 write_flash @flash_args
+```
+
+### Native build
+
+Requires [ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/get-started/) v5.5.x.
+
+```bash
+idf.py -DBOARD=waveshare_s3_lcd35b set-target esp32s3
+idf.py build
+idf.py -p /dev/ttyACM0 flash monitor
+```
+
+### CI
+
+GitHub Actions builds firmware and desktop simulators on every push/PR. Artifacts are uploaded for download from the [Actions tab](../../actions).
 
 ## Desktop Simulator
 
@@ -53,16 +113,16 @@ The download includes `game_2048_desktop.exe` and `SDL2.dll`. Keep both files in
 
 ### Building from source
 
-Requires SDL2, cmake, pkg-config (Linux/macOS), and LVGL v8.3 installed on the system.
+Requires SDL2, cmake, pkg-config (Linux/macOS), and LVGL v9.x installed on the system.
 
 **macOS:**
 
 ```bash
 brew install sdl2 cmake pkg-config
 
-# Install LVGL v8.3 from source
-git clone --depth 1 --branch release/v8.3 https://github.com/lvgl/lvgl.git /tmp/lvgl
-cp desktop/lv_conf.h /tmp/lvgl/
+# Install LVGL v9 from source
+git clone --depth 1 --branch release/v9.5 https://github.com/lvgl/lvgl.git /tmp/lvgl
+cp boards/desktop/lv_conf.h /tmp/lvgl/
 cd /tmp/lvgl && mkdir build && cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local -DLV_CONF_PATH=/tmp/lvgl/lv_conf.h -DBUILD_SHARED_LIBS=OFF
 make -j$(sysctl -n hw.ncpu)
@@ -79,9 +139,9 @@ make desktop-run
 ```bash
 sudo apt install libsdl2-dev cmake pkg-config
 
-# Install LVGL v8.3 from source
-git clone --depth 1 --branch release/v8.3 https://github.com/lvgl/lvgl.git /tmp/lvgl
-cp desktop/lv_conf.h /tmp/lvgl/
+# Install LVGL v9 from source
+git clone --depth 1 --branch release/v9.5 https://github.com/lvgl/lvgl.git /tmp/lvgl
+cp boards/desktop/lv_conf.h /tmp/lvgl/
 cd /tmp/lvgl && mkdir build && cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local -DLV_CONF_PATH=/tmp/lvgl/lv_conf.h -DBUILD_SHARED_LIBS=OFF
 make -j$(nproc)
@@ -101,9 +161,9 @@ curl -L -o sdl2.zip https://github.com/libsdl-org/SDL/releases/download/release-
 unzip sdl2.zip -d C:/SDL2
 cd C:/SDL2/SDL2-2.32.10 && mkdir include/SDL2 && mv include/*.h include/SDL2/
 
-# Install LVGL v8.3 from source
-git clone --depth 1 --branch release/v8.3 https://github.com/lvgl/lvgl.git C:/tmp/lvgl
-cp desktop/lv_conf.h C:/tmp/lvgl/
+# Install LVGL v9 from source
+git clone --depth 1 --branch release/v9.5 https://github.com/lvgl/lvgl.git C:/tmp/lvgl
+cp boards/desktop/lv_conf.h C:/tmp/lvgl/
 cd C:/tmp/lvgl && mkdir build && cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=C:/lvgl-install -DLV_CONF_PATH=C:/tmp/lvgl/lv_conf.h -DBUILD_SHARED_LIBS=OFF
 cmake --build . --config Release
@@ -111,75 +171,43 @@ cmake --install . --config Release
 cd -
 
 # Build
-cmake -S desktop -B desktop/build -DCMAKE_PREFIX_PATH="C:/SDL2/SDL2-2.32.10;C:/lvgl-install"
-cmake --build desktop/build --config Release
+cmake -S boards/desktop -B boards/desktop/build -DCMAKE_PREFIX_PATH="C:/SDL2/SDL2-2.32.10;C:/lvgl-install"
+cmake --build boards/desktop/build --config Release
 
 # Copy SDL2.dll next to the exe and run
-cp C:/SDL2/SDL2-2.32.10/lib/x64/SDL2.dll desktop/build/Release/
-desktop/build/Release/game_2048_desktop.exe
+cp C:/SDL2/SDL2-2.32.10/lib/x64/SDL2.dll boards/desktop/build/Release/
+boards/desktop/build/Release/game_2048_desktop.exe
 ```
-
-## ESP32 Firmware
-
-### Docker build (recommended)
-
-No host toolchain installation required. Uses a pre-built GHCR base image with ESP-IDF v5.5.1 baked in.
-
-```bash
-# Interactive shell inside the build container
-make docker-shell
-
-# One-shot build
-make docker-build
-
-# Flash (requires USB device access)
-make docker-flash
-```
-
-The base image is built from `Dockerfile.ghcr` and published to GHCR by the `build-base-image.yml` CI workflow. Local builds pull it automatically.
-
-### Native build
-
-Requires [ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/get-started/) v5.x installed on the host.
-
-```bash
-idf.py set-target esp32s3
-idf.py build
-idf.py -p /dev/ttyACM0 flash monitor
-```
-
-### CI
-
-GitHub Actions builds firmware and desktop simulators on every push/PR. Artifacts are uploaded for download from the [Actions tab](../../actions).
 
 ## Project Structure
 
 ```
 ├── main/
-│   └── main.c                  # BSP init sequence + game launch
+│   └── game_main.c              # App entry point (app_main) + game launch
 ├── components/
-│   ├── board_hw/               # Display, I2C, PMIC drivers (board-specific)
-│   ├── XPowersLib/             # AXP2101 PMIC library
-│   └── game_2048/              # Game logic, LVGL UI, gesture input
-│       ├── game_logic.c        # Pure C game engine (no LVGL dependency)
-│       ├── game_ui.c           # LVGL rendering, animations, overlays
-│       └── game_gesture.c      # Touch swipe → direction mapping
-├── desktop/
-│   ├── main.c                  # SDL2 desktop simulator entry point
-│   ├── CMakeLists.txt          # Desktop build (Linux/macOS/Windows)
-│   └── lv_conf.h               # LVGL config for desktop builds
-├── fonts/                      # Clear Sans font files (LVGL format)
-├── sdkconfig.defaults          # Flash, PSRAM, LVGL font config
-└── partitions.csv              # 2MB app + NVS
+│   ├── esp-board-common/        # Hardware abstraction (git submodule)
+│   │   ├── src/                 # Display, touch, I2C, PMIC, backlight drivers
+│   │   └── boards/              # Board configs (pins, peripherals, sdkconfig)
+│   └── game_2048/               # Game logic, LVGL UI, gesture input
+│       ├── game_logic.c         # Pure C game engine (no LVGL dependency)
+│       ├── game_ui.c            # LVGL rendering, animations, overlays
+│       ├── game_gesture.c       # Touch swipe detection
+│       └── game_screensaver.c   # Bouncing tile screensaver
+├── boards/
+│   └── desktop/                 # SDL2 desktop simulator
+├── fonts/                       # Clear Sans font files (LVGL format)
+├── docs/                        # Development notes
+├── sdkconfig.defaults           # Shared ESP-IDF settings (LVGL, partitions)
+└── partitions.csv               # 2MB app + NVS
 ```
 
-The board hardware drivers (`board_hw`, `XPowersLib`) are copied from the [seedsigner-c-modules](https://github.com/SeedSigner/seedsigner-c-modules) repository, stripped of camera/audio/SD/IMU/RTC dependencies. Touch input and LVGL porting use standard ESP Component Registry packages (`espressif/esp_lcd_axs15231b`, `espressif/esp_lvgl_port`).
+The [esp-board-common](https://codeberg.org/kdmukAI-bot/esp-board-common) submodule provides all ESP32 hardware drivers and board configurations. This project disables peripherals it doesn't need (camera, SD card, audio, RTC, IMU) via compile definitions in `CMakeLists.txt`. Board configs (pin assignments, display/touch controller selection, sdkconfig defaults) live in the submodule.
 
 ## Architecture
 
-The game logic in `game_logic.c` is a standalone C module with no UI dependencies — it manages the 4×4 grid, tile merging, scoring, and win/lose detection. The UI layer in `game_ui.c` renders the board using LVGL widgets and drives the game loop in response to swipe gestures detected by `game_gesture.c`.
+The game logic in `game_logic.c` is a standalone C module with no UI dependencies — it manages the 4x4 grid, tile merging, scoring, and win/lose detection. The UI layer in `game_ui.c` renders the board using LVGL widgets and drives the game loop in response to swipe gestures detected by `game_gesture.c`.
 
 ## Credits
 
 - Game concept by [Gabriele Cirulli](https://github.com/gabrielecirulli/2048)
-- BSP drivers from [SeedSigner](https://github.com/SeedSigner)
+- Hardware abstraction by [esp-board-common](https://codeberg.org/kdmukAI-bot/esp-board-common)
