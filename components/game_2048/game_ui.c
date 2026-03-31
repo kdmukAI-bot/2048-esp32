@@ -100,6 +100,25 @@ LV_FONT_DECLARE(font_clear_sans_bold_50);
 LV_FONT_DECLARE(font_clear_sans_regular_14);
 
 /* ── Layout tables (hand-tuned per resolution) ── */
+static const layout_t layout_480x800 = {
+    .screen_w = 480, .screen_h = 800,
+    .board_size = 452,  /* 4×98 + 5×12 */
+    .cell_size = 98, .cell_gap = 12,
+    .top_bar_h = 80,
+    .board_radius = 14, .cell_radius = 8,
+    .score_box_w = 100, .score_box_h = 48,
+    .overlay_btn_w = 160, .overlay_btn_h = 44,
+    .overlay_pad_row = 16,
+    .title_x = 14, .title_y = 20,
+    .score_y = 18,
+    .font_title = &font_clear_sans_bold_50,
+    .font_tile_large = &font_clear_sans_bold_40,
+    .font_tile_medium = &font_clear_sans_bold_30,
+    .font_tile_small = &font_clear_sans_bold_24,
+    .font_score = &font_clear_sans_regular_14,
+    .font_overlay_msg = &font_clear_sans_bold_40,
+};
+
 static const layout_t layout_320x480 = {
     .screen_w = 320, .screen_h = 480,
     .board_size = 302,  /* 4×63 + 5×10 */
@@ -140,7 +159,9 @@ static const layout_t layout_240x320 = {
 
 static void select_layout(int h_res, int v_res)
 {
-    if (h_res <= 240 && v_res <= 320) {
+    if (h_res >= 480 && v_res >= 800) {
+        layout = &layout_480x800;
+    } else if (h_res <= 240 && v_res <= 320) {
         layout = &layout_240x320;
     } else {
         layout = &layout_320x480;
