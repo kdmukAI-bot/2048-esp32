@@ -9,8 +9,10 @@ A touchscreen implementation of the classic [2048 game](https://github.com/gabri
 | [Waveshare ESP32-S3 Touch LCD 3.5B](https://www.waveshare.com/esp32-s3-touch-lcd-3.5b.htm) | ESP32-S3 | AXS15231B QSPI | AXS15231B | 320x480 |
 | [Waveshare ESP32-S3 Touch LCD 3.5](https://www.waveshare.com/esp32-s3-touch-lcd-3.5.htm) | ESP32-S3 | ST7796 SPI | FT6336 | 320x480 |
 | [Waveshare ESP32-S3 Touch LCD 2](https://www.waveshare.com/esp32-s3-touch-lcd-2.htm) | ESP32-S3 | ST7789 SPI | CST816D | 240x320 |
+| [Waveshare ESP32-P4 WiFi6 Touch LCD 3.5](https://www.waveshare.com/esp32-p4-wifi6-touch-lcd-3.5.htm) | ESP32-P4 | ST7796 SPI | FT6336 | 320x480 |
+| [Waveshare ESP32-P4 WiFi6 Touch LCD 4.3](https://www.waveshare.com/esp32-p4-wifi6-touch-lcd-4.3.htm) | ESP32-P4 | ST7701 MIPI-DSI | GT911 | 480x800 |
 
-All boards: ESP32-S3, 16MB Flash, 8MB PSRAM. The 3.5" boards include an AXP2101 PMIC; the 2" board does not.
+ESP32-S3 boards: 16MB Flash, 8MB PSRAM. ESP32-P4 boards: 16MB Flash, 32MB PSRAM. The 3.5" boards include an AXP2101 PMIC; the 2" board does not.
 
 Board selection is compile-time via the `BOARD` variable (default: `waveshare_s3_lcd35b`). Hardware abstraction is provided by the [esp-board-common](https://codeberg.org/kdmukAI-bot/esp-board-common) submodule.
 
@@ -37,7 +39,7 @@ No host toolchain required. Uses a pre-built GHCR base image with ESP-IDF v5.5.1
 make docker-build
 
 # Build for a specific board
-make docker-build BOARD=waveshare_s3_lcd35
+make docker-build BOARD=waveshare_p4_lcd35
 
 # Build + collect flashable artifacts to dist/
 make dist BOARD=waveshare_s3_lcd35b
@@ -58,10 +60,16 @@ esptool.py --chip esp32s3 -b 460800 write_flash @flash_args
 
 ### Native build
 
-Requires [ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/get-started/) v5.5.x.
+Requires [ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/stable/get-started/) v5.5.x.
 
 ```bash
+# ESP32-S3 board
 idf.py -DBOARD=waveshare_s3_lcd35b set-target esp32s3
+idf.py build
+idf.py -p /dev/ttyACM0 flash monitor
+
+# ESP32-P4 board
+idf.py -DBOARD=waveshare_p4_lcd35 set-target esp32p4
 idf.py build
 idf.py -p /dev/ttyACM0 flash monitor
 ```
