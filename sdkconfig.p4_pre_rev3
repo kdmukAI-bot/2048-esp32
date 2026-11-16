@@ -1,0 +1,11 @@
+# ESP32-P4 chip revisions v0.x and v1.x (the silicon on boards bought before the switch
+# to v3.x). Appended last by CMakeLists.txt when BOARD_VARIANT=PRE_REV3, overriding the
+# v3 default in sdkconfig.defaults.esp32p4. Mirrors upstream MicroPython's
+# ESP32_GENERIC_P4 PRE_REV3 variant.
+#
+# Override and set the minimum chip revision to cover all pre-v3 boards.
+CONFIG_ESP32P4_REV_MIN_300=n
+CONFIG_ESP32P4_REV_MIN_0=y
+
+# Enable support for ESP32-P4 revisions 0.x and 1.x
+CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y

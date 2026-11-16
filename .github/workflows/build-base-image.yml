@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       esp_idf_ref:
-        description: "ESP-IDF ref/tag for prebaked baseline"
+        description: "ESP-IDF ref/tag for prebaked baseline (blank: ESP_IDF_REF in Dockerfile.ghcr)"
         required: false
-        default: "v5.5.1"
+        default: ""
   push:
     branches: [ main ]
     paths:
@@ -38,8 +38,16 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
+        env:
+          # Passed through env, not interpolated into the script, so the input is data.
+          ESP_IDF_REF_INPUT: ${{ inputs.esp_idf_ref }}
         run: |
-          IDF_REF="${{ github.event_name == 'workflow_dispatch' && inputs.esp_idf_ref || 'v5.5.1' }}"
+          # Dockerfile.ghcr's ESP_IDF_REF is the single source of the default baseline.
+          IDF_REF="${ESP_IDF_REF_INPUT:-}"
+          if [ -z "$IDF_REF" ]; then
+            IDF_REF="$(sed -n 's/^ARG ESP_IDF_REF=//p' Dockerfile.ghcr)"
+          fi
+          test -n "$IDF_REF"
           docker build -f Dockerfile.ghcr \
             --build-arg ESP_IDF_REF="$IDF_REF" \
             -t "${{ steps.meta.outputs.image }}:latest" \

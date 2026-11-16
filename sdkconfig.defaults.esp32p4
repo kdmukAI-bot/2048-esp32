@@ -1,0 +1,19 @@
+# ESP32-P4 settings, applied by ESP-IDF right after sdkconfig.defaults for an esp32p4
+# target.
+#
+# Build for ESP32-P4 chip revision v3.x, the silicon P4 boards ship with now. v3.x and
+# the older v0.x/v1.x chips cannot run the same image; BOARD_VARIANT=PRE_REV3 builds
+# for the older chips instead (see sdkconfig.p4_pre_rev3).
+#
+# Select v3.0 explicitly: ESP-IDF v5.5.5 defaults the minimum to v3.1, which would
+# refuse v3.0 chips. Needs ESP-IDF v5.5.3 or later; an older IDF does not know this
+# symbol, drops it without a warning, and builds an image capped at v1.99.
+# - https://docs.espressif.com/projects/esp-idf/en/stable/esp32p4/api-reference/kconfig-reference.html
+CONFIG_ESP32P4_REV_MIN_300=y
+
+# The P4 bootloader starts at 0x2000, so it must fit in 0x6000 bytes before the
+# partition table at 0x8000. Under ESP-IDF v5.5.5 the INFO-level bootloader is 0x60c0
+# bytes on the 4.3" board, just over. WARN drops the informational boot lines (the
+# SeedSigner MicroPython builder uses WARN too); errors such as a failed chip revision
+# check still print.
+CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y

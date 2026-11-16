@@ -23,26 +23,42 @@ jobs:
   build:
     needs: resolve-image-owner
     runs-on: ubuntu-24.04
+    # ESP32-P4 builds target chip revision v3.x, the silicon P4 boards now ship with.
+    # Older v0.x/v1.x chips cannot run that image, so the Waveshare 4.3" also gets a
+    # PRE_REV3 build for boards bought before the switch. fail-fast: false so one
+    # board's failure doesn't cancel the others' builds.
     strategy:
+      fail-fast: false
       matrix:
         include:
           - board: waveshare_s3_lcd35b
-            target: esp32s3
           - board: waveshare_s3_lcd35
-            target: esp32s3
           - board: waveshare_s3_lcd2
-            target: esp32s3
+          - board: waveshare_p4_lcd43
+          - board: waveshare_p4_lcd43
+            variant: PRE_REV3
+          - board: waveshare_p4_lcd35
     defaults:
       run:
         shell: bash
     env:
       IDF_PATH: /opt/toolchains/esp-idf
       IDF_TOOLS_PATH: /opt/espressif
+      BOARD: ${{ matrix.board }}
+      BOARD_VARIANT: ${{ matrix.variant }}
+      # Artifact and cache name: <BOARD>, or <BOARD>-<VARIANT> for a variant build.
+      BUILD_NAME: ${{ matrix.variant && format('{0}-{1}', matrix.board, matrix.variant) || matrix.board }}
     container:
-      image: ghcr.io/${{ needs.resolve-image-owner.outputs.owner_lc }}/2048-esp32-base:latest
+      # Pinned to the ESP-IDF baseline tag (ESP_IDF_REF in Dockerfile.ghcr), not :latest,
+      # so publishing a new base image never changes what an existing ref builds.
+      image: ghcr.io/${{ needs.resolve-image-owner.outputs.owner_lc }}/2048-esp32-base:idf-v5.5.5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # esp-board-common is a submodule. Its own nested submodules (the camera
+          # pipeline) are not needed, since the game leaves out its board_camera component.
+          submodules: true
 
       - name: Ensure baked ESP-IDF tools environment
         run: |
@@ -54,22 +70,28 @@ jobs:
       - name: Restore ccache
         uses: actions/cache@v4
         with:
-          path: /root/.cache/ccache
-          key: ccache-${{ matrix.board }}-${{ hashFiles('main/**', 'components/**', 'boards/**') }}
+          # Relative to the workspace; the build step points CCACHE_DIR at the same dir.
+          path: .ccache
+          key: ccache-${{ env.BUILD_NAME }}-${{ hashFiles('main/**', 'components/**', 'boards/**') }}
           restore-keys: |
-            ccache-${{ matrix.board }}-
+            ccache-${{ env.BUILD_NAME }}-
 
       - name: Build firmware
+        # The same script as the local Docker build: it regenerates sdkconfig for the
+        # board (and variant) and fails unless an ESP32-P4 image targets the intended
+        # chip revisions.
         run: |
+          export CCACHE_DIR="$GITHUB_WORKSPACE/.ccache"
           source "$IDF_PATH/export.sh"
-          idf.py set-target ${{ matrix.target }}
-          idf.py build -DBOARD=${{ matrix.board }} -DCCACHE_ENABLE=1 2>&1 | tee build-log.txt
+          ./scripts/build_firmware.sh
 
       - name: Record build provenance
         run: |
           {
-            echo "board=${{ matrix.board }}"
-            echo "target=${{ matrix.target }}"
+            echo "board=$BOARD"
+            echo "variant=${BOARD_VARIANT:-}"
+            echo "target=$(sed -n 's/^CONFIG_IDF_TARGET="\(.*\)"/\1/p' sdkconfig)"
+            if [ -f build/chip_revisions.txt ]; then cat build/chip_revisions.txt; fi
             echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "git_ref=${{ github.ref }}"
             echo "git_sha=${{ github.sha }}"
@@ -81,18 +103,16 @@ jobs:
       - name: Collect firmware artifacts
         run: |
           mkdir -p out/bootloader out/partition_table
-          cp build/game_2048.bin out/ 2>/dev/null || cp build/*.bin out/ 2>/dev/null || true
-          cp build/game_2048.elf out/ 2>/dev/null || cp build/*.elf out/ 2>/dev/null || true
-          cp build/flash_args out/ 2>/dev/null || true
-          cp build/bootloader/bootloader.bin out/bootloader/ 2>/dev/null || true
-          cp build/partition_table/partition-table.bin out/partition_table/ 2>/dev/null || true
-          cp build/provenance.txt out/ 2>/dev/null || true
-          cp build-log.txt out/ 2>/dev/null || true
+          cp build/game_2048.bin build/game_2048.elf build/flash_args build/provenance.txt out/
+          cp build/bootloader/bootloader.bin out/bootloader/
+          cp build/partition_table/partition-table.bin out/partition_table/
+          cp build-log.txt out/
+          if [ -f build/chip_revisions.txt ]; then cp build/chip_revisions.txt out/; fi
 
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-2048-${{ matrix.board }}
+          name: firmware-2048-${{ env.BUILD_NAME }}
           path: out/
 
   desktop-linux:

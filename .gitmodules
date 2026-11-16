@@ -1,4 +1,4 @@
 [submodule "components/esp-board-common"]
 	path = components/esp-board-common
-	url = git@codeberg.org:kdmukAI-bot/esp-board-common.git
-	branch = feature/overridable-peripheral-flags
+	url = https://github.com/kdmukAI-bot/esp-board-common.git
+	branch = main
