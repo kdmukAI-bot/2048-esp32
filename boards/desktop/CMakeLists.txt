@@ -14,7 +14,7 @@ if(WIN32)
         HINTS ${CMAKE_PREFIX_PATH}
         PATH_SUFFIXES include)
     if(NOT SDL2_PARENT_INCLUDE_DIR)
-        message(FATAL_ERROR "Could not find SDL2/SDL.h — set CMAKE_PREFIX_PATH to SDL2 install")
+        message(FATAL_ERROR "Could not find SDL2/SDL.h: set CMAKE_PREFIX_PATH to SDL2 install")
     endif()
 
     find_path(LVGL_INCLUDE_DIR lvgl/lvgl.h HINTS ${CMAKE_PREFIX_PATH}/include)
@@ -61,7 +61,6 @@ target_compile_definitions(game_2048_desktop PRIVATE
 if(WIN32)
     target_include_directories(game_2048_desktop PRIVATE
         ${CMAKE_SOURCE_DIR}
-        ${REPO_ROOT}/components/board_common
         ${GAME_DIR}/include
         ${SDL2_PARENT_INCLUDE_DIR}
         ${LVGL_INCLUDE_DIR}
@@ -75,7 +74,6 @@ if(WIN32)
 else()
     target_include_directories(game_2048_desktop PRIVATE
         ${CMAKE_SOURCE_DIR}
-        ${REPO_ROOT}/components/board_common
         ${GAME_DIR}/include
         ${SDL2_INCLUDE_DIRS}
         ${LVGL_INCLUDE_DIRS}

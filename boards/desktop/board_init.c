@@ -1,13 +1,13 @@
 /**
- * Desktop board — SDL2 display/input backend.
+ * Desktop board: SDL2 display/input backend.
  *
  * Implements the board interface (board.h) for desktop platforms.
  * SDL2 window + LVGL display, mouse pointer input, keyboard → swipe mapping.
  *
  * Controls:
- *   Arrow keys / WASD  — swipe directions
- *   Mouse click        — LVGL pointer (for New Game button)
- *   Close window       — quit
+ *   Arrow keys / WASD: swipe directions
+ *   Mouse click:       LVGL pointer (for New Game button)
+ *   Close window:      quit
  */
 
 #include <stdio.h>
@@ -122,8 +122,11 @@ static bool init_sdl(void)
 
 /* ── Board interface ── */
 
-int board_init(lv_display_t **disp, lv_indev_t **touch_indev)
+int board_init(const board_app_config_t *app_cfg,
+               lv_display_t **disp, lv_indev_t **touch_indev)
 {
+    (void)app_cfg;  /* the simulator window is always portrait */
+
     if (!init_sdl()) {
         exit(1);
     }

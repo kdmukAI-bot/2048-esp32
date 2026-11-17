@@ -1,14 +1,15 @@
 /**
  * Application entry point and game startup.
  *
- * Defines app_main() for ESP32 boards. Initialises board hardware via
- * esp-board-common, then launches the game UI.
+ * Defines app_main() for ESP32 boards, which initialises board hardware via
+ * esp-board-common, then launches the game UI. The desktop simulator gets game_main()
+ * instead, called from main() in boards/desktop/board_init.c.
  */
 #include "board.h"
-#include "board_backlight.h"
 #include "game_ui.h"
 
 #ifndef DESKTOP_BUILD
+#include "board_backlight.h"
 #include "sdkconfig.h"
 #include "esp_lvgl_port.h"
 #include "esp_log.h"
@@ -22,7 +23,9 @@ static const char *TAG = "2048";
 #ifndef DESKTOP_BUILD
 void app_main(void)
 #else
-int main(void)
+/* main() stays in boards/desktop/board_init.c: it includes SDL.h, which on Windows
+ * renames main() so SDL2main can wrap it. */
+void game_main(void)
 #endif
 {
     lv_display_t *disp;
@@ -53,9 +56,5 @@ int main(void)
     game_ui_init(touch);
 #endif
 
-    board_run();  /* never returns */
-
-#ifdef DESKTOP_BUILD
-    return 0;
-#endif
+    board_run();  /* never returns on ESP32; on desktop, returns when the window closes */
 }
