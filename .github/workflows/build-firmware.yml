@@ -49,15 +49,18 @@ jobs:
       # Artifact and cache name: <BOARD>, or <BOARD>-<VARIANT> for a variant build.
       BUILD_NAME: ${{ matrix.variant && format('{0}-{1}', matrix.board, matrix.variant) || matrix.board }}
     container:
-      # Pinned to the ESP-IDF baseline tag (ESP_IDF_REF in Dockerfile.ghcr), not :latest,
-      # so publishing a new base image never changes what an existing ref builds.
+      # The ESP-IDF version tag (ESP_IDF_REF in Dockerfile.ghcr), not :latest, so an older
+      # commit keeps building with the ESP-IDF release it was written for. Rebuilding the
+      # image republishes the same tag: the ESP-IDF release and its compiler versions stay
+      # the same, but Ubuntu and Python packages are installed fresh.
       image: ghcr.io/${{ needs.resolve-image-owner.outputs.owner_lc }}/2048-esp32-base:idf-v5.5.5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           # esp-board-common is a submodule. Its own nested submodules (the camera
-          # pipeline) are not needed, since the game leaves out its board_camera component.
+          # pipeline) are not needed, since the game leaves out its board_camera
+          # component.
           submodules: true
 
       - name: Ensure baked ESP-IDF tools environment
